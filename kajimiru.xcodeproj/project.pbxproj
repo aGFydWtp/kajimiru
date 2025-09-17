@@ -278,7 +278,7 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCLocalSwiftPackageReference section */
-                33579B7A79B2DC848EEB1572 /* KajimiruKit */ = {isa = XCLocalSwiftPackageReference; relativePath = ".."; };
+               33579B7A79B2DC848EEB1572 /* KajimiruKit */ = {isa = XCLocalSwiftPackageReference; relativePath = "."; };
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
