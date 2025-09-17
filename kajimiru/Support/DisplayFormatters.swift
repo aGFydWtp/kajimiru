@@ -14,7 +14,6 @@ enum DisplayFormatters {
         formatter.calendar = localizedCalendar
         formatter.dateStyle = .medium
         formatter.timeStyle = .none
-        formatter.doesRelativeDateFormatting = true
         return formatter
     }()
 

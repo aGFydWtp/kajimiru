@@ -1,10 +1,13 @@
 import SwiftUI
 import KajimiruKit
 
+private typealias HouseholdGroup = KajimiruKit.Group
+
 struct ContentView: View {
     @StateObject private var viewModel: ChoreDashboardViewModel
 
-    init(viewModel: @autoclosure @escaping () -> ChoreDashboardViewModel = ChoreDashboardViewModel()) {
+    @MainActor
+    init(viewModel: @autoclosure @escaping @MainActor () -> ChoreDashboardViewModel = ChoreDashboardViewModel()) {
         _viewModel = StateObject(wrappedValue: viewModel())
     }
 
@@ -88,7 +91,7 @@ private extension ContentView {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private func groupHeader(_ group: Group) -> some View {
+    private func groupHeader(_ group: HouseholdGroup) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
                 if let icon = group.icon {
