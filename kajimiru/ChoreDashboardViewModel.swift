@@ -149,7 +149,7 @@ final class ChoreDashboardViewModel: ObservableObject {
         )
 
         let created = try await [kitchenReset, laundry, shopping, trash].asyncCompactMap { draft in
-            try await choreService.createChore(draft: draft, actorId: owner.id)
+            try await self.choreService.createChore(draft: draft, actorId: owner.id)
         }
         return created
     }
