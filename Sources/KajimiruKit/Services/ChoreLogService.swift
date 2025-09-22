@@ -4,35 +4,30 @@ public struct ChoreLogDraft: Sendable {
     public var groupId: UUID
     public var choreId: UUID
     public var performerId: UUID
-    public var startedAt: Date
-    public var durationMinutes: Int?
     public var memo: String?
+    public var createdAt: Date?
 
     public init(
         groupId: UUID,
         choreId: UUID,
         performerId: UUID,
-        startedAt: Date,
-        durationMinutes: Int? = nil,
-        memo: String? = nil
+        memo: String? = nil,
+        createdAt: Date? = nil
     ) {
         self.groupId = groupId
         self.choreId = choreId
         self.performerId = performerId
-        self.startedAt = startedAt
-        self.durationMinutes = durationMinutes
         self.memo = memo
+        self.createdAt = createdAt
     }
 }
 
 public struct ChoreLogUpdate: Sendable {
-    public var startedAt: Date?
-    public var durationMinutes: Int??
+    public var performerId: UUID?
     public var memo: String??
 
-    public init(startedAt: Date? = nil, durationMinutes: Int?? = nil, memo: String?? = nil) {
-        self.startedAt = startedAt
-        self.durationMinutes = durationMinutes
+    public init(performerId: UUID? = nil, memo: String?? = nil) {
+        self.performerId = performerId
         self.memo = memo
     }
 }
@@ -56,16 +51,18 @@ public final class ChoreLogService: Sendable {
     /// Persists a new chore log after validating the request.
     public func recordChore(draft: ChoreLogDraft, actorId: UUID) async throws -> ChoreLog {
         try await validatePermissions(groupId: draft.groupId, actorId: actorId)
-        try await validateChoreExists(id: draft.choreId, groupId: draft.groupId)
+        let chore = try await fetchChore(id: draft.choreId, groupId: draft.groupId)
         try validate(logDraft: draft)
 
+        let createdAt = draft.createdAt ?? Date()
         let log = ChoreLog(
             choreId: draft.choreId,
             groupId: draft.groupId,
             performerId: draft.performerId,
-            startedAt: draft.startedAt,
-            durationMinutes: draft.durationMinutes,
-            memo: draft.memo?.trimmingCharacters(in: .whitespacesAndNewlines)
+            weight: chore.weight,
+            memo: draft.memo?.trimmingCharacters(in: .whitespacesAndNewlines),
+            createdAt: createdAt,
+            updatedAt: createdAt
         )
         try await logRepository.save(log)
         return log
@@ -80,16 +77,8 @@ public final class ChoreLogService: Sendable {
         }
         var log = logs[existingIndex]
 
-        if let startedAt = update.startedAt {
-            log.startedAt = startedAt
-        }
-        if let durationMinutes = update.durationMinutes {
-            if let minutes = durationMinutes {
-                guard minutes > 0 else {
-                    throw KajimiruError.validationFailed(reason: "Duration must be positive when provided.")
-                }
-            }
-            log.durationMinutes = durationMinutes
+        if let performerId = update.performerId {
+            log.performerId = performerId
         }
         if let memo = update.memo {
             log.memo = memo?.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -117,19 +106,19 @@ public final class ChoreLogService: Sendable {
         }
     }
 
-    private func validateChoreExists(id: UUID, groupId: UUID) async throws {
+    private func fetchChore(id: UUID, groupId: UUID) async throws -> Chore {
         guard let chore = try await choreRepository.fetchChore(id: id), chore.groupId == groupId else {
             throw KajimiruError.validationFailed(reason: "Chore does not belong to the provided group.")
         }
+        return chore
     }
 
     private func validate(logDraft: ChoreLogDraft) throws {
-        if let duration = logDraft.durationMinutes, duration <= 0 {
-            throw KajimiruError.validationFailed(reason: "Duration must be positive when provided.")
-        }
-        let futureThreshold = Date().addingTimeInterval(60 * 60 * 24)
-        guard logDraft.startedAt <= futureThreshold else {
-            throw KajimiruError.validationFailed(reason: "Start date cannot be more than 24 hours in the future.")
+        if let timestamp = logDraft.createdAt {
+            let futureThreshold = Date().addingTimeInterval(60 * 60 * 24)
+            guard timestamp <= futureThreshold else {
+                throw KajimiruError.validationFailed(reason: "Created date cannot be more than 24 hours in the future.")
+            }
         }
     }
 }

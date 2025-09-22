@@ -147,23 +147,10 @@ private extension ContentView {
 
     private func choreCard(_ chore: Chore) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .top) {
-                Text(chore.title)
-                    .font(.subheadline.weight(.semibold))
-                Spacer()
-                if let assignee = viewModel.defaultAssigneeName(for: chore) {
-                    Label(assignee, systemImage: "person.crop.circle")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .labelStyle(.titleAndIcon)
-                }
-            }
+            Text(chore.title)
+                .font(.subheadline.weight(.semibold))
 
-            infoRow(icon: "tag", text: DisplayFormatters.categoryDescription(chore.category))
-            infoRow(icon: "calendar", text: DisplayFormatters.frequencyDescription(chore.frequency))
-            if let duration = DisplayFormatters.formattedDuration(optionalMinutes: chore.estimatedMinutes) {
-                infoRow(icon: "timer", text: duration)
-            }
+            infoRow(icon: "scalemass", text: DisplayFormatters.weightDescription(chore.weight))
 
             if let notes = chore.notes, notes.isEmpty == false {
                 Text(notes)
@@ -189,11 +176,11 @@ private extension ContentView {
 
                 VStack(alignment: .leading, spacing: 12) {
                     ForEach(snapshot.contributions, id: \.userId) { summary in
-                        contributionRow(summary, totalDuration: snapshot.totalDurationMinutes, totalCount: snapshot.totalCount)
+                        contributionRow(summary, totalWeight: snapshot.totalWeight, totalCount: snapshot.totalCount)
                     }
                 }
 
-                Text("合計 \(snapshot.totalCount)件 / \(DisplayFormatters.formattedDuration(minutes: snapshot.totalDurationMinutes))")
+                Text("合計 \(snapshot.totalCount)件 / \(DisplayFormatters.weightDescription(snapshot.totalWeight))")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             } else {
@@ -204,7 +191,7 @@ private extension ContentView {
         }
     }
 
-    private func contributionRow(_ summary: ContributorSummary, totalDuration: Int, totalCount: Int) -> some View {
+    private func contributionRow(_ summary: ContributorSummary, totalWeight: Int, totalCount: Int) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text(viewModel.userDisplayName(for: summary.userId))
@@ -215,25 +202,16 @@ private extension ContentView {
                     .foregroundStyle(.secondary)
             }
 
-            ProgressView(value: summary.shareOfTotalDuration(totalDuration))
+            ProgressView(value: summary.shareOfTotalWeight(totalWeight))
                 .tint(.accentColor)
 
             HStack {
-                Text(percentageString(summary.shareOfTotalDuration(totalDuration)))
+                Text(percentageString(summary.shareOfTotalWeight(totalWeight)))
                 Spacer()
-                Text(DisplayFormatters.formattedDuration(minutes: summary.totalDurationMinutes))
+                Text(DisplayFormatters.weightDescription(summary.totalWeight))
             }
             .font(.caption)
             .foregroundStyle(.secondary)
-
-            let categories = summary.categoryCounts
-                .sorted { $0.key.rawValue < $1.key.rawValue }
-                .map { "\(DisplayFormatters.categoryDescription($0.key)) \($0.value)件" }
-            if categories.isEmpty == false {
-                Text(categories.joined(separator: "・"))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)

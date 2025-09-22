@@ -55,11 +55,6 @@ final class ChoreDashboardViewModel: ObservableObject {
         usersById[id]?.displayName ?? "不明なメンバー"
     }
 
-    func defaultAssigneeName(for chore: Chore) -> String? {
-        guard let assigneeId = chore.defaultAssigneeId else { return nil }
-        return usersById[assigneeId]?.displayName
-    }
-
     func loadDemoData() async {
         guard isLoading == false else { return }
         isLoading = true
@@ -97,7 +92,6 @@ final class ChoreDashboardViewModel: ObservableObject {
         let logs = try await recordSampleLogs(group: group, owner: owner, chores: chores)
         let weekly = analyticsService.weeklySnapshots(
             logs: logs,
-            chores: chores,
             endingOn: Date(),
             weekCount: 4
         )
@@ -110,42 +104,29 @@ final class ChoreDashboardViewModel: ObservableObject {
     }
 
     private func createSampleChores(group: Group, owner: User) async throws -> [Chore] {
-        let members = sampleUsers
         let kitchenReset = ChoreDraft(
             groupId: group.id,
             title: "ダイニングの片付け",
-            category: .cleaning,
-            defaultAssigneeId: members.dropFirst().first?.id,
-            estimatedMinutes: 20,
-            notes: "テーブル拭きと食洗機のセット",
-            frequency: .recurring(RecurrenceRule(period: .weekly, interval: 1, weekdays: [2, 3, 4, 5, 6]))
+            weight: 3,
+            notes: "テーブル拭きと食洗機のセット"
         )
         let laundry = ChoreDraft(
             groupId: group.id,
             title: "週末の洗濯",
-            category: .laundry,
-            defaultAssigneeId: members.last?.id,
-            estimatedMinutes: 45,
-            notes: "シーツとタオルまで実施",
-            frequency: .recurring(RecurrenceRule(period: .weekly, interval: 1, weekdays: [7]))
+            weight: 5,
+            notes: "シーツとタオルまで実施"
         )
         let shopping = ChoreDraft(
             groupId: group.id,
             title: "食材のまとめ買い",
-            category: .shopping,
-            defaultAssigneeId: owner.id,
-            estimatedMinutes: 60,
-            notes: "冷凍庫のストック確認も忘れずに",
-            frequency: .recurring(RecurrenceRule(period: .weekly, interval: 1, weekdays: [1]))
+            weight: 8,
+            notes: "冷凍庫のストック確認も忘れずに"
         )
         let trash = ChoreDraft(
             groupId: group.id,
             title: "資源ゴミの準備",
-            category: .maintenance,
-            defaultAssigneeId: members.dropFirst().first?.id,
-            estimatedMinutes: 15,
-            notes: "段ボールをまとめて玄関へ",
-            frequency: .custom(description: "第2・第4木曜日")
+            weight: 2,
+            notes: "段ボールをまとめて玄関へ"
         )
 
         let created = try await [kitchenReset, laundry, shopping, trash].asyncCompactMap { draft in
@@ -172,9 +153,8 @@ final class ChoreDashboardViewModel: ObservableObject {
                     groupId: group.id,
                     choreId: kitchen.id,
                     performerId: members[1].id,
-                    startedAt: try makeDate(dayOffset: -1, hour: 20, minute: 30),
-                    durationMinutes: 18,
-                    memo: "食洗機まで実施"
+                    memo: "食洗機まで実施",
+                    createdAt: try makeDate(dayOffset: -1, hour: 20, minute: 30)
                 ),
                 actorId: owner.id
             )
@@ -183,9 +163,8 @@ final class ChoreDashboardViewModel: ObservableObject {
                     groupId: group.id,
                     choreId: kitchen.id,
                     performerId: members[2].id,
-                    startedAt: try makeDate(dayOffset: -10, hour: 21, minute: 15),
-                    durationMinutes: 20,
-                    memo: "遅番の片付け"
+                    memo: "遅番の片付け",
+                    createdAt: try makeDate(dayOffset: -10, hour: 21, minute: 15)
                 ),
                 actorId: owner.id
             )
@@ -196,9 +175,8 @@ final class ChoreDashboardViewModel: ObservableObject {
                     groupId: group.id,
                     choreId: laundry.id,
                     performerId: owner.id,
-                    startedAt: try makeDate(dayOffset: -8, hour: 9, minute: 0),
-                    durationMinutes: 50,
-                    memo: "シーツも交換"
+                    memo: "シーツも交換",
+                    createdAt: try makeDate(dayOffset: -8, hour: 9, minute: 0)
                 ),
                 actorId: owner.id
             )
@@ -207,8 +185,7 @@ final class ChoreDashboardViewModel: ObservableObject {
                     groupId: group.id,
                     choreId: laundry.id,
                     performerId: members[2].id,
-                    startedAt: try makeDate(dayOffset: -2, hour: 10, minute: 0),
-                    durationMinutes: 45
+                    createdAt: try makeDate(dayOffset: -2, hour: 10, minute: 0)
                 ),
                 actorId: owner.id
             )
@@ -219,9 +196,8 @@ final class ChoreDashboardViewModel: ObservableObject {
                     groupId: group.id,
                     choreId: shopping.id,
                     performerId: owner.id,
-                    startedAt: try makeDate(dayOffset: -5, hour: 18, minute: 0),
-                    durationMinutes: 70,
-                    memo: "冷凍食品を追加購入"
+                    memo: "冷凍食品を追加購入",
+                    createdAt: try makeDate(dayOffset: -5, hour: 18, minute: 0)
                 ),
                 actorId: owner.id
             )
@@ -232,15 +208,14 @@ final class ChoreDashboardViewModel: ObservableObject {
                     groupId: group.id,
                     choreId: trash.id,
                     performerId: members[1].id,
-                    startedAt: try makeDate(dayOffset: -4, hour: 7, minute: 30),
-                    durationMinutes: 15
+                    createdAt: try makeDate(dayOffset: -4, hour: 7, minute: 30)
                 ),
                 actorId: owner.id
             )
         }
 
         let logs = try await choreLogService.fetchLogs(groupId: group.id, since: nil)
-        return logs.sorted { $0.startedAt > $1.startedAt }
+        return logs.sorted { $0.createdAt > $1.createdAt }
     }
 
     private static func defaultUsers() -> [User] {
