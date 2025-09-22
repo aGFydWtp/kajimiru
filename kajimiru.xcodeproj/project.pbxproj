@@ -23,6 +23,10 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXBuildFile section */
+                02E69232A956DC74CF9CBE28 /* KajimiruKit in Frameworks */ = {isa = PBXBuildFile; productRef = 03AC504BBB0D42F933B5077C /* KajimiruKit */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		F94A61642E7B0C3500DB2DD4 /* kajimiru.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = kajimiru.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F94A61732E7B0C3600DB2DD4 /* kajimiruTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = kajimiruTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -48,13 +52,14 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		F94A61612E7B0C3500DB2DD4 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
+                F94A61612E7B0C3500DB2DD4 /* Frameworks */ = {
+                        isa = PBXFrameworksBuildPhase;
+                        buildActionMask = 2147483647;
+                        files = (
+                                02E69232A956DC74CF9CBE28 /* KajimiruKit in Frameworks */,
+                        );
+                        runOnlyForDeploymentPostprocessing = 0;
+                };
 		F94A61702E7B0C3600DB2DD4 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -111,8 +116,9 @@
 				F94A61662E7B0C3500DB2DD4 /* kajimiru */,
 			);
 			name = kajimiru;
-			packageProductDependencies = (
-			);
+                        packageProductDependencies = (
+                                03AC504BBB0D42F933B5077C /* KajimiruKit */,
+                        );
 			productName = kajimiru;
 			productReference = F94A61642E7B0C3500DB2DD4 /* kajimiru.app */;
 			productType = "com.apple.product-type.application";
@@ -189,13 +195,16 @@
 			buildConfigurationList = F94A615F2E7B0C3500DB2DD4 /* Build configuration list for PBXProject "kajimiru" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
-			knownRegions = (
-				en,
-				Base,
-			);
-			mainGroup = F94A615B2E7B0C3500DB2DD4;
-			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 77;
+                        knownRegions = (
+                                en,
+                                Base,
+                        );
+                        mainGroup = F94A615B2E7B0C3500DB2DD4;
+                        minimizedProjectReferenceProxies = 1;
+                        packageReferences = (
+                                33579B7A79B2DC848EEB1572 /* KajimiruKit */,
+                        );
+                        preferredProjectObjectVersion = 77;
 			productRefGroup = F94A61652E7B0C3500DB2DD4 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -267,6 +276,14 @@
 			targetProxy = F94A617E2E7B0C3600DB2DD4 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
+
+/* Begin XCLocalSwiftPackageReference section */
+               33579B7A79B2DC848EEB1572 /* KajimiruKit */ = {isa = XCLocalSwiftPackageReference; relativePath = ".."; };
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+                03AC504BBB0D42F933B5077C /* KajimiruKit */ = {isa = XCSwiftPackageProductDependency; package = 33579B7A79B2DC848EEB1572 /* KajimiruKit */; productName = KajimiruKit; };
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCBuildConfiguration section */
 		F94A61852E7B0C3600DB2DD4 /* Debug */ = {
