@@ -81,7 +81,7 @@ private extension ContentView {
         VStack(spacing: 12) {
             Image(systemName: "house")
                 .font(.system(size: 48))
-                .foregroundStyle(.accent)
+                .foregroundStyle(.red)
             Text("Kajimiru へようこそ")
                 .font(.title3.weight(.semibold))
             Text("家族やチームでの家事ログがここに集約されます。")
@@ -97,7 +97,7 @@ private extension ContentView {
                 if let icon = group.icon {
                     Image(systemName: icon)
                         .font(.system(size: 36))
-                        .foregroundStyle(.accent)
+                        .foregroundStyle(.red)
                         .frame(width: 44, height: 44)
                         .background(
                             RoundedRectangle(cornerRadius: 12)
