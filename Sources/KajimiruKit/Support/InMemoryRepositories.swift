@@ -32,8 +32,8 @@ public actor InMemoryChoreLogRepository: ChoreLogRepository {
 
     public func listLogs(in groupId: UUID, since date: Date?) async throws -> [ChoreLog] {
         logs.values
-            .filter { $0.groupId == groupId && (date == nil || $0.startedAt >= date!) }
-            .sorted { $0.startedAt < $1.startedAt }
+            .filter { $0.groupId == groupId && (date == nil || $0.createdAt >= date!) }
+            .sorted { $0.createdAt < $1.createdAt }
     }
 
     public func save(_ log: ChoreLog) async throws {
