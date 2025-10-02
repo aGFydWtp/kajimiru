@@ -9,7 +9,9 @@ public struct ChoreLog: Identifiable, Codable, Hashable, Sendable {
     public let weight: Int
     public var memo: String?
     public var createdAt: Date
+    public var createdBy: UUID
     public var updatedAt: Date
+    public var updatedBy: UUID
 
     public init(
         id: UUID = UUID(),
@@ -19,7 +21,9 @@ public struct ChoreLog: Identifiable, Codable, Hashable, Sendable {
         weight: Int,
         memo: String? = nil,
         createdAt: Date = Date(),
-        updatedAt: Date = Date()
+        createdBy: UUID,
+        updatedAt: Date = Date(),
+        updatedBy: UUID
     ) {
         precondition(Chore.isValidWeight(weight), "Invalid chore weight")
         self.id = id
@@ -29,12 +33,15 @@ public struct ChoreLog: Identifiable, Codable, Hashable, Sendable {
         self.weight = weight
         self.memo = memo
         self.createdAt = createdAt
+        self.createdBy = createdBy
         self.updatedAt = updatedAt
+        self.updatedBy = updatedBy
     }
 
     public func updating(
         performerId: UUID? = nil,
-        memo: String?? = nil
+        memo: String?? = nil,
+        updatedBy: UUID
     ) -> ChoreLog {
         var copy = self
         if let performerId {
@@ -43,6 +50,7 @@ public struct ChoreLog: Identifiable, Codable, Hashable, Sendable {
         if let memo {
             copy.memo = memo
         }
+        copy.updatedBy = updatedBy
         copy.updatedAt = Date()
         return copy
     }

@@ -102,3 +102,43 @@ public actor InMemoryUserRepository: UserRepository {
         users[user.id] = user
     }
 }
+
+public actor InMemoryMemberRepository: MemberRepository {
+    private var members: [UUID: Member] = [:]
+    private var groupMembers: [UUID: Set<UUID>] = [:] // groupId -> Set<memberId>
+
+    public init(members: [Member] = []) {
+        for member in members {
+            self.members[member.id] = member
+        }
+    }
+
+    public func listMembers(in groupId: UUID, includeDeleted: Bool) async throws -> [Member] {
+        guard let memberIds = groupMembers[groupId] else { return [] }
+        return memberIds.compactMap { members[$0] }.filter { includeDeleted || !$0.isDeleted }
+    }
+
+    public func fetchMember(id: UUID) async throws -> Member? {
+        members[id]
+    }
+
+    public func save(_ member: Member) async throws {
+        members[member.id] = member
+    }
+
+    public func softDeleteMember(id: UUID, in groupId: UUID, deletedBy: UUID) async throws {
+        guard var member = members[id] else {
+            throw KajimiruError.notFound
+        }
+        member = member.softDeleting(deletedBy: deletedBy)
+        members[id] = member
+    }
+
+    // Internal helper to associate members with groups
+    func associateMemberWithGroup(memberId: UUID, groupId: UUID) {
+        if groupMembers[groupId] == nil {
+            groupMembers[groupId] = []
+        }
+        groupMembers[groupId]?.insert(memberId)
+    }
+}

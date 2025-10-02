@@ -43,34 +43,29 @@ public final class ChoreService: Sendable {
         self.groupRepository = groupRepository
     }
 
-    /// Creates a new chore if the actor has the appropriate permissions.
-    public func createChore(draft: ChoreDraft, actorId: UUID) async throws -> Chore {
+    /// Creates a new chore.
+    public func createChore(draft: ChoreDraft, createdBy: UUID) async throws -> Chore {
         try validate(draft: draft)
-        guard let group = try await groupRepository.fetchGroup(id: draft.groupId) else {
+        guard try await groupRepository.fetchGroup(id: draft.groupId) != nil else {
             throw KajimiruError.notFound
-        }
-        guard let role = group.role(of: actorId), role != .viewer else {
-            throw KajimiruError.unauthorized
         }
 
         let chore = Chore(
             groupId: draft.groupId,
             title: draft.title.trimmingCharacters(in: .whitespacesAndNewlines),
             weight: draft.weight,
-            notes: draft.notes?.trimmingCharacters(in: .whitespacesAndNewlines)
+            notes: draft.notes?.trimmingCharacters(in: .whitespacesAndNewlines),
+            createdBy: createdBy,
+            updatedBy: createdBy
         )
         try await choreRepository.save(chore)
         return chore
     }
 
     /// Applies updates to an existing chore and persists the result.
-    public func updateChore(id: UUID, actorId: UUID, update: ChoreUpdate) async throws -> Chore {
+    public func updateChore(id: UUID, update: ChoreUpdate, updatedBy: UUID) async throws -> Chore {
         guard var chore = try await choreRepository.fetchChore(id: id) else {
             throw KajimiruError.notFound
-        }
-        guard let group = try await groupRepository.fetchGroup(id: chore.groupId),
-              let role = group.role(of: actorId), role != .viewer else {
-            throw KajimiruError.unauthorized
         }
 
         if let title = update.title {
@@ -89,17 +84,13 @@ public final class ChoreService: Sendable {
         if let notes = update.notes {
             chore.notes = notes?.trimmingCharacters(in: .whitespacesAndNewlines)
         }
-        chore = chore.updating()
+        chore = chore.updating(updatedBy: updatedBy)
         try await choreRepository.save(chore)
         return chore
     }
 
-    /// Deletes the chore if the actor has the required role.
-    public func deleteChore(id: UUID, groupId: UUID, actorId: UUID) async throws {
-        guard let group = try await groupRepository.fetchGroup(id: groupId),
-              let role = group.role(of: actorId), role != .viewer else {
-            throw KajimiruError.unauthorized
-        }
+    /// Deletes the chore.
+    public func deleteChore(id: UUID, groupId: UUID) async throws {
         try await choreRepository.deleteChore(id: id, in: groupId)
     }
 

@@ -11,7 +11,9 @@ public struct Chore: Identifiable, Codable, Hashable, Sendable {
     public var weight: Int
     public var notes: String?
     public var createdAt: Date
+    public var createdBy: UUID
     public var updatedAt: Date
+    public var updatedBy: UUID
 
     public init(
         id: UUID = UUID(),
@@ -20,7 +22,9 @@ public struct Chore: Identifiable, Codable, Hashable, Sendable {
         weight: Int = Chore.defaultWeight,
         notes: String? = nil,
         createdAt: Date = Date(),
-        updatedAt: Date = Date()
+        createdBy: UUID,
+        updatedAt: Date = Date(),
+        updatedBy: UUID
     ) {
         precondition(Self.allowedWeights.contains(weight), "Invalid chore weight")
         self.id = id
@@ -29,7 +33,9 @@ public struct Chore: Identifiable, Codable, Hashable, Sendable {
         self.weight = weight
         self.notes = notes
         self.createdAt = createdAt
+        self.createdBy = createdBy
         self.updatedAt = updatedAt
+        self.updatedBy = updatedBy
     }
 
     public static func isValidWeight(_ weight: Int) -> Bool {
@@ -39,7 +45,8 @@ public struct Chore: Identifiable, Codable, Hashable, Sendable {
     public func updating(
         title: String? = nil,
         weight: Int? = nil,
-        notes: String?? = nil
+        notes: String?? = nil,
+        updatedBy: UUID
     ) -> Chore {
         var copy = self
         if let title {
@@ -52,6 +59,7 @@ public struct Chore: Identifiable, Codable, Hashable, Sendable {
         if let notes {
             copy.notes = notes
         }
+        copy.updatedBy = updatedBy
         copy.updatedAt = Date()
         return copy
     }

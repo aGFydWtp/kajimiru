@@ -4,7 +4,7 @@ import SwiftUI
 struct KajimiruApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MainTabView()
         }
     }
 }
