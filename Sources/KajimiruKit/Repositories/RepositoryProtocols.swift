@@ -33,3 +33,11 @@ public protocol UserRepository: Sendable {
     func fetchUsers(ids: [UUID]) async throws -> [User]
     func save(_ user: User) async throws
 }
+
+/// Handles member management within groups, supporting soft deletion.
+public protocol MemberRepository: Sendable {
+    func listMembers(in groupId: UUID, includeDeleted: Bool) async throws -> [Member]
+    func fetchMember(id: UUID) async throws -> Member?
+    func save(_ member: Member) async throws
+    func softDeleteMember(id: UUID, in groupId: UUID, deletedBy: UUID) async throws
+}

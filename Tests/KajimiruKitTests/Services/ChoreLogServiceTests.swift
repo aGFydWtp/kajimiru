@@ -18,27 +18,70 @@ final class ChoreLogServiceTests: XCTestCase {
             groupRepository: groupRepository
         )
 
-        let chore = Chore(groupId: group.id, title: "Dishes", category: .cooking, estimatedMinutes: 15)
+        let chore = Chore(groupId: group.id, title: "Dishes", weight: 3)
         try await choreRepository.save(chore)
 
+        let timestamp = Date().addingTimeInterval(-3600)
         let draft = ChoreLogDraft(
             groupId: group.id,
             choreId: chore.id,
             performerId: performerId,
-            startedAt: Date(),
-            durationMinutes: 20,
-            memo: "Used new sponge"
+            memo: "  Used new sponge  ",
+            createdAt: timestamp
         )
 
         let log = try await service.recordChore(draft: draft, actorId: adminId)
         let stored = try await logRepository.listLogs(in: group.id, since: nil)
 
         XCTAssertEqual(stored.count, 1)
-        XCTAssertEqual(stored.first?.id, log.id)
-        XCTAssertEqual(stored.first?.durationMinutes, 20)
+        let storedLog = try XCTUnwrap(stored.first)
+        XCTAssertEqual(storedLog.id, log.id)
+        XCTAssertEqual(storedLog.memo, "Used new sponge")
+        XCTAssertEqual(storedLog.weight, chore.weight)
+        XCTAssertEqual(storedLog.createdAt.timeIntervalSince1970, timestamp.timeIntervalSince1970, accuracy: 0.5)
     }
 
-    func testUpdateLogValidations() async throws {
+    func testUpdateLogUpdatesFields() async throws {
+        let adminId = UUID()
+        let newPerformer = UUID()
+        let group = Group(
+            name: "Home",
+            members: [GroupMembership(userId: adminId, role: .admin)]
+        )
+        let groupRepository = InMemoryGroupRepository(groups: [group])
+        let choreRepository = InMemoryChoreRepository()
+        let logRepository = InMemoryChoreLogRepository()
+        let service = ChoreLogService(
+            logRepository: logRepository,
+            choreRepository: choreRepository,
+            groupRepository: groupRepository
+        )
+
+        let chore = Chore(groupId: group.id, title: "Vacuum", weight: 2)
+        try await choreRepository.save(chore)
+
+        let initialLog = try await service.recordChore(
+            draft: ChoreLogDraft(
+                groupId: group.id,
+                choreId: chore.id,
+                performerId: adminId
+            ),
+            actorId: adminId
+        )
+
+        let updated = try await service.updateLog(
+            logId: initialLog.id,
+            groupId: group.id,
+            actorId: adminId,
+            update: ChoreLogUpdate(performerId: newPerformer, memo: .some(" Updated "))
+        )
+        XCTAssertEqual(updated.memo, "Updated")
+        XCTAssertEqual(updated.performerId, newPerformer)
+        XCTAssertEqual(updated.weight, chore.weight)
+        XCTAssertTrue(updated.updatedAt >= initialLog.updatedAt)
+    }
+
+    func testRecordChoreRejectsFarFutureDate() async throws {
         let adminId = UUID()
         let group = Group(
             name: "Home",
@@ -53,42 +96,27 @@ final class ChoreLogServiceTests: XCTestCase {
             groupRepository: groupRepository
         )
 
-        let chore = Chore(groupId: group.id, title: "Vacuum", category: .cleaning)
+        let chore = Chore(groupId: group.id, title: "Windows", weight: 5)
         try await choreRepository.save(chore)
 
-        let initialLog = try await service.recordChore(
-            draft: ChoreLogDraft(
-                groupId: group.id,
-                choreId: chore.id,
-                performerId: adminId,
-                startedAt: Date()
-            ),
-            actorId: adminId
+        let futureDate = Date().addingTimeInterval(60 * 60 * 26)
+        let draft = ChoreLogDraft(
+            groupId: group.id,
+            choreId: chore.id,
+            performerId: adminId,
+            createdAt: futureDate
         )
 
         do {
-            _ = try await service.updateLog(
-                logId: initialLog.id,
-                groupId: group.id,
-                actorId: adminId,
-                update: ChoreLogUpdate(durationMinutes: .some(-5))
-            )
+            _ = try await service.recordChore(draft: draft, actorId: adminId)
             XCTFail("Expected validation error")
         } catch let error as KajimiruError {
             if case let .validationFailed(reason) = error {
-                XCTAssertEqual(reason, "Duration must be positive when provided.")
+                XCTAssertEqual(reason, "Created date cannot be more than 24 hours in the future.")
             } else {
                 XCTFail("Unexpected error: \(error)")
             }
         }
-
-        let updated = try await service.updateLog(
-            logId: initialLog.id,
-            groupId: group.id,
-            actorId: adminId,
-            update: ChoreLogUpdate(memo: .some("Updated"))
-        )
-        XCTAssertEqual(updated.memo, "Updated")
     }
 
     func testUnauthorizedUserCannotRecord() async throws {
@@ -110,14 +138,13 @@ final class ChoreLogServiceTests: XCTestCase {
             groupRepository: groupRepository
         )
 
-        let chore = Chore(groupId: group.id, title: "Trash", category: .cleaning)
+        let chore = Chore(groupId: group.id, title: "Trash", weight: 1)
         try await choreRepository.save(chore)
 
         let draft = ChoreLogDraft(
             groupId: group.id,
             choreId: chore.id,
-            performerId: viewerId,
-            startedAt: Date()
+            performerId: viewerId
         )
 
         do {

@@ -1,59 +1,59 @@
 import Foundation
 
-/// Role a user can have within a group when collaborating on chore management.
-public enum GroupRole: String, Codable, CaseIterable, Sendable {
-    case admin
-    case editor
-    case viewer
-}
-
-/// Represents membership information for a user in a specific group.
-public struct GroupMembership: Codable, Hashable, Sendable {
-    public var userId: UUID
-    public var role: GroupRole
-    public var joinedAt: Date
-
-    public init(userId: UUID, role: GroupRole, joinedAt: Date = Date()) {
-        self.userId = userId
-        self.role = role
-        self.joinedAt = joinedAt
-    }
-}
-
 /// Collaborative space (household, office, etc.) where chores and records are shared.
 public struct Group: Identifiable, Codable, Hashable, Sendable {
     public let id: UUID
     public var name: String
     public var icon: String?
-    public var members: [GroupMembership]
+    public var members: [Member]
     public var createdAt: Date
+    public var createdBy: UUID
     public var updatedAt: Date
+    public var updatedBy: UUID
 
     public init(
         id: UUID = UUID(),
         name: String,
         icon: String? = nil,
-        members: [GroupMembership] = [],
+        members: [Member] = [],
         createdAt: Date = Date(),
-        updatedAt: Date = Date()
+        createdBy: UUID,
+        updatedAt: Date = Date(),
+        updatedBy: UUID
     ) {
         self.id = id
         self.name = name
         self.icon = icon
         self.members = members
         self.createdAt = createdAt
+        self.createdBy = createdBy
         self.updatedAt = updatedAt
+        self.updatedBy = updatedBy
     }
 
-    /// Returns the membership role for a given user if present.
-    public func role(of userId: UUID) -> GroupRole? {
-        members.first { $0.userId == userId }?.role
+    /// Returns active (non-deleted) members only.
+    public var activeMembers: [Member] {
+        members.filter { !$0.isDeleted }
     }
 
-    /// Returns a new group with the provided membership list.
-    public func updatingMembers(_ members: [GroupMembership]) -> Group {
+    /// Returns a new group with updated properties.
+    public func updating(
+        name: String? = nil,
+        icon: String?? = nil,
+        members: [Member]? = nil,
+        updatedBy: UUID
+    ) -> Group {
         var copy = self
-        copy.members = members
+        if let name {
+            copy.name = name
+        }
+        if let icon {
+            copy.icon = icon
+        }
+        if let members {
+            copy.members = members
+        }
+        copy.updatedBy = updatedBy
         copy.updatedAt = Date()
         return copy
     }

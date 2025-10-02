@@ -17,8 +17,7 @@ final class ChoreServiceTests: XCTestCase {
         let draft = ChoreDraft(
             groupId: group.id,
             title: "  Take out trash  ",
-            category: .cleaning,
-            estimatedMinutes: 10,
+            weight: 3,
             notes: "  Leave by 8am  "
         )
 
@@ -27,7 +26,7 @@ final class ChoreServiceTests: XCTestCase {
 
         XCTAssertEqual(stored?.title, "Take out trash")
         XCTAssertEqual(stored?.notes, "Leave by 8am")
-        XCTAssertEqual(stored?.estimatedMinutes, 10)
+        XCTAssertEqual(stored?.weight, 3)
         XCTAssertEqual(stored?.groupId, group.id)
     }
 
@@ -44,7 +43,7 @@ final class ChoreServiceTests: XCTestCase {
         let invalidDraft = ChoreDraft(
             groupId: group.id,
             title: "   ",
-            category: .cleaning
+            weight: 1
         )
 
         do {
@@ -73,7 +72,7 @@ final class ChoreServiceTests: XCTestCase {
         let groupRepository = InMemoryGroupRepository(groups: [group])
         let service = ChoreService(choreRepository: choreRepository, groupRepository: groupRepository)
 
-        let draft = ChoreDraft(groupId: group.id, title: "Laundry", category: .laundry)
+        let draft = ChoreDraft(groupId: group.id, title: "Laundry", weight: 2)
         let chore = try await service.createChore(draft: draft, actorId: adminId)
 
         do {
