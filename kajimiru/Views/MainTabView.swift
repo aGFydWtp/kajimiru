@@ -3,53 +3,31 @@ import KajimiruKit
 
 struct MainTabView: View {
     @StateObject private var appState = AppState()
-    @State private var showingRecordSheet = false
 
     var body: some View {
-        ZStack(alignment: .bottomTrailing) {
-            TabView {
-                NavigationStack {
-                    DashboardView()
-                }
-                .tabItem {
-                    Label("ダッシュボード", systemImage: "chart.bar.fill")
-                }
-
-                NavigationStack {
-                    ChoreListView()
-                }
-                .tabItem {
-                    Label("家事一覧", systemImage: "list.bullet")
-                }
-
-                NavigationStack {
-                    SettingsView()
-                }
-                .tabItem {
-                    Label("設定", systemImage: "gearshape.fill")
-                }
+        TabView {
+            NavigationStack {
+                DashboardView()
             }
-            .environmentObject(appState)
-
-            // Floating Action Button
-            Button {
-                showingRecordSheet = true
-            } label: {
-                Image(systemName: "plus")
-                    .font(.title2.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 60, height: 60)
-                    .background(Color.accentColor)
-                    .clipShape(Circle())
-                    .shadow(color: Color.accentColor.opacity(0.4), radius: 8, x: 0, y: 4)
+            .tabItem {
+                Label("ホーム", systemImage: "house.fill")
             }
-            .padding(.trailing, 20)
-            .padding(.bottom, 80)
-            .sheet(isPresented: $showingRecordSheet) {
-                RecordChoreSheet()
-                    .environmentObject(appState)
+
+            NavigationStack {
+                ChoreListView()
+            }
+            .tabItem {
+                Label("家事一覧", systemImage: "list.bullet")
+            }
+
+            NavigationStack {
+                SettingsView()
+            }
+            .tabItem {
+                Label("設定", systemImage: "gearshape.fill")
             }
         }
+        .environmentObject(appState)
         .task {
             await appState.loadMVPData()
         }

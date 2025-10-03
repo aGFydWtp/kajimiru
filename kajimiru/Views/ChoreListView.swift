@@ -49,7 +49,7 @@ struct ChoreListView: View {
                 }
             }
         }
-        .navigationTitle("家事一覧")
+        .navigationTitle("家事リスト")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
