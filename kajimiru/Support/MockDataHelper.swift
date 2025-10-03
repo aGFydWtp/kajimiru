@@ -87,20 +87,46 @@ struct MockDataHelper {
 
             // 1日に1-3個のランダムな家事ログ
             let numLogs = Int.random(in: 1...3)
-            for _ in 0..<numLogs {
+            for logIndex in 0..<numLogs {
                 let chore = chores.randomElement()!
-                let performer = members.randomElement()!
 
-                logs.append(ChoreLog(
-                    choreId: chore.id,
-                    groupId: group.id,
-                    performerId: performer.id,
-                    weight: Double(chore.weight),
-                    createdAt: date,
-                    createdBy: userId,
-                    updatedAt: date,
-                    updatedBy: userId
-                ))
+                // 30%の確率で二人一緒にやったログを作成
+                if logIndex == 0 && Bool.random() && Bool.random() {
+                    // 二人で一緒にやった場合
+                    let batchId = UUID()
+                    let weightPerPerson = Double(chore.weight) / 2.0
+                    let logTime = calendar.date(byAdding: .hour, value: -Int.random(in: 8...20), to: date) ?? date
+
+                    for member in members {
+                        logs.append(ChoreLog(
+                            choreId: chore.id,
+                            groupId: group.id,
+                            performerId: member.id,
+                            weight: weightPerPerson,
+                            batchId: batchId,
+                            performerCount: 2,
+                            createdAt: logTime,
+                            createdBy: userId,
+                            updatedAt: logTime,
+                            updatedBy: userId
+                        ))
+                    }
+                } else {
+                    // 一人でやった場合
+                    let performer = members.randomElement()!
+                    let logTime = calendar.date(byAdding: .hour, value: -Int.random(in: 8...20), to: date) ?? date
+
+                    logs.append(ChoreLog(
+                        choreId: chore.id,
+                        groupId: group.id,
+                        performerId: performer.id,
+                        weight: Double(chore.weight),
+                        createdAt: logTime,
+                        createdBy: userId,
+                        updatedAt: logTime,
+                        updatedBy: userId
+                    ))
+                }
             }
         }
 

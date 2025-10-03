@@ -21,6 +21,13 @@ struct MainTabView: View {
             }
 
             NavigationStack {
+                ChoreLogHistoryView()
+            }
+            .tabItem {
+                Label("記録", systemImage: "clock.fill")
+            }
+
+            NavigationStack {
                 SettingsView()
             }
             .tabItem {
@@ -75,6 +82,7 @@ struct RecordChoreSheet: View {
 
                 Section("メモ（任意）") {
                     TextField("メモ", text: $memo, axis: .vertical)
+                        .padding( .vertical, 8)
                         .lineLimit(2...4)
                 }
 

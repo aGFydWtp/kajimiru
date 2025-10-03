@@ -41,12 +41,13 @@ struct ChoreListView: View {
                 .listRowBackground(Color.clear)
             } else {
                 ForEach(filteredChores) { chore in
-                    ChoreRow(chore: chore)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            recordingChore = chore
-                        }
-                        .contextMenu {
+                    Button {
+                        recordingChore = chore
+                    } label: {
+                        ChoreRow(chore: chore)
+                    }
+                    .buttonStyle(.plain)
+                    .contextMenu {
                             Button {
                                 Task {
                                     try? await appState.updateChore(
@@ -146,6 +147,8 @@ struct ChoreRow: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
         .padding(.vertical, 4)
     }
 }
