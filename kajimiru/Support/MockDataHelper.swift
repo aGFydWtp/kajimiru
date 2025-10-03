@@ -95,7 +95,7 @@ struct MockDataHelper {
                     choreId: chore.id,
                     groupId: group.id,
                     performerId: performer.id,
-                    weight: chore.weight,
+                    weight: Double(chore.weight),
                     createdAt: date,
                     createdBy: userId,
                     updatedAt: date,

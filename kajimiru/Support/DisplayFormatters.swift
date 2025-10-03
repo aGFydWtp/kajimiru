@@ -22,6 +22,6 @@ enum DisplayFormatters {
     }
 
     static func weightDescription(_ weight: Int) -> String {
-        "重み\(weight)"
+        "大変度\(weight)"
     }
 }

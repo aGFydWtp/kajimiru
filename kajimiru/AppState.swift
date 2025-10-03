@@ -104,17 +104,17 @@ class AppState: ObservableObject {
         }
     }
 
-    func recordChore(choreId: UUID, performerId: UUID, memo: String?) async throws {
+    func recordChore(choreId: UUID, performerIds: [UUID], memo: String?) async throws {
         guard let group = group else { return }
 
         let draft = ChoreLogDraft(
             groupId: group.id,
             choreId: choreId,
-            performerId: performerId,
+            performerIds: performerIds,
             memo: memo
         )
-        let log = try await choreLogService.recordChore(draft: draft, createdBy: currentUserId)
-        choreLogs.append(log)
+        let logs = try await choreLogService.recordChore(draft: draft, createdBy: currentUserId)
+        choreLogs.append(contentsOf: logs)
     }
 
     func getWeeklySnapshot() async throws -> WorkloadSnapshot? {

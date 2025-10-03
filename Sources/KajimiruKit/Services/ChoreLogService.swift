@@ -3,10 +3,25 @@ import Foundation
 public struct ChoreLogDraft: Sendable {
     public var groupId: UUID
     public var choreId: UUID
-    public var performerId: UUID
+    public var performerIds: [UUID]
     public var memo: String?
     public var createdAt: Date?
 
+    public init(
+        groupId: UUID,
+        choreId: UUID,
+        performerIds: [UUID],
+        memo: String? = nil,
+        createdAt: Date? = nil
+    ) {
+        self.groupId = groupId
+        self.choreId = choreId
+        self.performerIds = performerIds
+        self.memo = memo
+        self.createdAt = createdAt
+    }
+
+    // Convenience initializer for single performer (backward compatibility)
     public init(
         groupId: UUID,
         choreId: UUID,
@@ -14,11 +29,13 @@ public struct ChoreLogDraft: Sendable {
         memo: String? = nil,
         createdAt: Date? = nil
     ) {
-        self.groupId = groupId
-        self.choreId = choreId
-        self.performerId = performerId
-        self.memo = memo
-        self.createdAt = createdAt
+        self.init(
+            groupId: groupId,
+            choreId: choreId,
+            performerIds: [performerId],
+            memo: memo,
+            createdAt: createdAt
+        )
     }
 }
 
@@ -48,8 +65,8 @@ public final class ChoreLogService: Sendable {
         self.groupRepository = groupRepository
     }
 
-    /// Persists a new chore log after validating the request.
-    public func recordChore(draft: ChoreLogDraft, createdBy: UUID) async throws -> ChoreLog {
+    /// Persists new chore logs after validating the request. Creates one log per performer with evenly distributed weight.
+    public func recordChore(draft: ChoreLogDraft, createdBy: UUID) async throws -> [ChoreLog] {
         guard try await groupRepository.fetchGroup(id: draft.groupId) != nil else {
             throw KajimiruError.notFound
         }
@@ -57,19 +74,30 @@ public final class ChoreLogService: Sendable {
         try validate(logDraft: draft)
 
         let createdAt = draft.createdAt ?? Date()
-        let log = ChoreLog(
-            choreId: draft.choreId,
-            groupId: draft.groupId,
-            performerId: draft.performerId,
-            weight: chore.weight,
-            memo: draft.memo?.trimmingCharacters(in: .whitespacesAndNewlines),
-            createdAt: createdAt,
-            createdBy: createdBy,
-            updatedAt: createdAt,
-            updatedBy: createdBy
-        )
-        try await logRepository.save(log)
-        return log
+        let performerCount = draft.performerIds.count
+        let weightPerPerson = Double(chore.weight) / Double(performerCount)
+        let batchId = UUID() // 常に新しいbatchIDを生成
+
+        var logs: [ChoreLog] = []
+        for performerId in draft.performerIds {
+            let log = ChoreLog(
+                choreId: draft.choreId,
+                groupId: draft.groupId,
+                performerId: performerId,
+                weight: weightPerPerson,
+                memo: draft.memo?.trimmingCharacters(in: .whitespacesAndNewlines),
+                batchId: batchId,
+                performerCount: performerCount,
+                createdAt: createdAt,
+                createdBy: createdBy,
+                updatedAt: createdAt,
+                updatedBy: createdBy
+            )
+            try await logRepository.save(log)
+            logs.append(log)
+        }
+
+        return logs
     }
 
     /// Applies updates to an existing log.
@@ -109,6 +137,9 @@ public final class ChoreLogService: Sendable {
     }
 
     private func validate(logDraft: ChoreLogDraft) throws {
+        guard !logDraft.performerIds.isEmpty else {
+            throw KajimiruError.validationFailed(reason: "At least one performer must be specified.")
+        }
         if let timestamp = logDraft.createdAt {
             let futureThreshold = Date().addingTimeInterval(60 * 60 * 24)
             guard timestamp <= futureThreshold else {

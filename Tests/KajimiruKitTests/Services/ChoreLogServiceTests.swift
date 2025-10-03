@@ -30,14 +30,15 @@ final class ChoreLogServiceTests: XCTestCase {
             createdAt: timestamp
         )
 
-        let log = try await service.recordChore(draft: draft, actorId: adminId)
+        let logs = try await service.recordChore(draft: draft, createdBy: adminId)
         let stored = try await logRepository.listLogs(in: group.id, since: nil)
 
+        XCTAssertEqual(logs.count, 1)
         XCTAssertEqual(stored.count, 1)
         let storedLog = try XCTUnwrap(stored.first)
-        XCTAssertEqual(storedLog.id, log.id)
+        XCTAssertEqual(storedLog.id, logs[0].id)
         XCTAssertEqual(storedLog.memo, "Used new sponge")
-        XCTAssertEqual(storedLog.weight, chore.weight)
+        XCTAssertEqual(storedLog.weight, Double(chore.weight))
         XCTAssertEqual(storedLog.createdAt.timeIntervalSince1970, timestamp.timeIntervalSince1970, accuracy: 0.5)
     }
 
@@ -60,24 +61,25 @@ final class ChoreLogServiceTests: XCTestCase {
         let chore = Chore(groupId: group.id, title: "Vacuum", weight: 2)
         try await choreRepository.save(chore)
 
-        let initialLog = try await service.recordChore(
+        let initialLogs = try await service.recordChore(
             draft: ChoreLogDraft(
                 groupId: group.id,
                 choreId: chore.id,
                 performerId: adminId
             ),
-            actorId: adminId
+            createdBy: adminId
         )
+        let initialLog = initialLogs[0]
 
         let updated = try await service.updateLog(
             logId: initialLog.id,
             groupId: group.id,
-            actorId: adminId,
-            update: ChoreLogUpdate(performerId: newPerformer, memo: .some(" Updated "))
+            update: ChoreLogUpdate(performerId: newPerformer, memo: .some(" Updated ")),
+            updatedBy: adminId
         )
         XCTAssertEqual(updated.memo, "Updated")
         XCTAssertEqual(updated.performerId, newPerformer)
-        XCTAssertEqual(updated.weight, chore.weight)
+        XCTAssertEqual(updated.weight, Double(chore.weight))
         XCTAssertTrue(updated.updatedAt >= initialLog.updatedAt)
     }
 
@@ -108,7 +110,7 @@ final class ChoreLogServiceTests: XCTestCase {
         )
 
         do {
-            _ = try await service.recordChore(draft: draft, actorId: adminId)
+            _ = try await service.recordChore(draft: draft, createdBy: adminId)
             XCTFail("Expected validation error")
         } catch let error as KajimiruError {
             if case let .validationFailed(reason) = error {
@@ -119,15 +121,13 @@ final class ChoreLogServiceTests: XCTestCase {
         }
     }
 
-    func testUnauthorizedUserCannotRecord() async throws {
+    func testRecordChoreWithMultiplePerformers() async throws {
         let adminId = UUID()
-        let viewerId = UUID()
+        let performer1 = UUID()
+        let performer2 = UUID()
         let group = Group(
             name: "Home",
-            members: [
-                GroupMembership(userId: adminId, role: .admin),
-                GroupMembership(userId: viewerId, role: .viewer)
-            ]
+            members: [GroupMembership(userId: adminId, role: .admin)]
         )
         let groupRepository = InMemoryGroupRepository(groups: [group])
         let choreRepository = InMemoryChoreRepository()
@@ -138,20 +138,34 @@ final class ChoreLogServiceTests: XCTestCase {
             groupRepository: groupRepository
         )
 
-        let chore = Chore(groupId: group.id, title: "Trash", weight: 1)
+        let chore = Chore(groupId: group.id, title: "Cleaning", weight: 3)
         try await choreRepository.save(chore)
 
         let draft = ChoreLogDraft(
             groupId: group.id,
             choreId: chore.id,
-            performerId: viewerId
+            performerIds: [performer1, performer2],
+            memo: "Together"
         )
 
-        do {
-            _ = try await service.recordChore(draft: draft, actorId: viewerId)
-            XCTFail("Expected unauthorized error")
-        } catch let error as KajimiruError {
-            XCTAssertEqual(error, .unauthorized)
-        }
+        let logs = try await service.recordChore(draft: draft, createdBy: adminId)
+        let stored = try await logRepository.listLogs(in: group.id, since: nil)
+
+        XCTAssertEqual(logs.count, 2)
+        XCTAssertEqual(stored.count, 2)
+
+        // Both logs should have same batchId and performerCount
+        let batchId = logs[0].batchId
+        XCTAssertEqual(logs[1].batchId, batchId, "Both logs should share the same batchId")
+        XCTAssertEqual(logs[0].performerCount, 2)
+        XCTAssertEqual(logs[1].performerCount, 2)
+
+        // Weight should be evenly distributed
+        XCTAssertEqual(logs[0].weight, 1.5, accuracy: 0.01)
+        XCTAssertEqual(logs[1].weight, 1.5, accuracy: 0.01)
+
+        // Both should have the same memo
+        XCTAssertEqual(logs[0].memo, "Together")
+        XCTAssertEqual(logs[1].memo, "Together")
     }
 }

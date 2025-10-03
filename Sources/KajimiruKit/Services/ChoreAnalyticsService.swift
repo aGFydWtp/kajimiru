@@ -93,7 +93,7 @@ public final class ChoreAnalyticsService: Sendable {
     /// Aggregates logs by assignee and recorded chore weight.
     private static func contributions(for logs: [ChoreLog]) -> [ContributorSummary] {
         var counts: [UUID: Int] = [:]
-        var totalWeights: [UUID: Int] = [:]
+        var totalWeights: [UUID: Double] = [:]
 
         for log in logs {
             counts[log.performerId, default: 0] += 1
@@ -104,7 +104,7 @@ public final class ChoreAnalyticsService: Sendable {
             ContributorSummary(
                 userId: userId,
                 completedCount: count,
-                totalWeight: totalWeights[userId, default: 0]
+                totalWeight: Int(totalWeights[userId, default: 0].rounded())
             )
         }
     }

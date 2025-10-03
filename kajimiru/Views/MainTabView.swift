@@ -17,7 +17,7 @@ struct MainTabView: View {
                 ChoreListView()
             }
             .tabItem {
-                Label("家事一覧", systemImage: "list.bullet")
+                Label("家事リスト", systemImage: "list.bullet")
             }
 
             NavigationStack {
@@ -38,45 +38,37 @@ struct RecordChoreSheet: View {
     @EnvironmentObject var appState: AppState
     @Environment(\.dismiss) var dismiss
 
-    let preselectedChore: Chore?
+    let preselectedChore: Chore
 
     @State private var selectedChoreId: UUID?
-    @State private var selectedPerformerId: UUID?
+    @State private var selectedPerformerIds: Set<UUID> = []
     @State private var memo = ""
     @State private var isSubmitting = false
     @State private var errorMessage: String?
 
-    init(preselectedChore: Chore? = nil) {
+    init(preselectedChore: Chore) {
         self.preselectedChore = preselectedChore
-        _selectedChoreId = State(initialValue: preselectedChore?.id)
+        _selectedChoreId = State(initialValue: preselectedChore.id)
     }
 
     var body: some View {
         NavigationStack {
             Form {
-                Section("家事") {
-                    if let preselectedChore {
-                        LabeledContent("家事名") {
-                            Text(preselectedChore.title)
-                        }
-                        LabeledContent("大変度") {
-                            Text(DisplayFormatters.weightDescription(preselectedChore.weight))
-                        }
-                    } else {
-                        Picker("実施した家事", selection: $selectedChoreId) {
-                            Text("選択してください").tag(nil as UUID?)
-                            ForEach(appState.chores) { chore in
-                                Text(chore.title).tag(chore.id as UUID?)
-                            }
-                        }
-                    }
-                }
-
+                Text(preselectedChore.title)
+                
                 Section("実施者") {
-                    Picker("誰がやった？", selection: $selectedPerformerId) {
-                        Text("選択してください").tag(nil as UUID?)
-                        ForEach(appState.members.filter { !$0.isDeleted }) { member in
-                            Text(member.displayName).tag(member.id as UUID?)
+                    ForEach(appState.members.filter { !$0.isDeleted }) { member in
+                        Toggle(isOn: Binding(
+                            get: { selectedPerformerIds.contains(member.id) },
+                            set: { isSelected in
+                                if isSelected {
+                                    selectedPerformerIds.insert(member.id)
+                                } else {
+                                    selectedPerformerIds.remove(member.id)
+                                }
+                            }
+                        )) {
+                            Text(member.displayName)
                         }
                     }
                 }
@@ -106,7 +98,7 @@ struct RecordChoreSheet: View {
                     Button("記録") {
                         Task { await recordChore() }
                     }
-                    .disabled(selectedChoreId == nil || selectedPerformerId == nil || isSubmitting)
+                    .disabled(selectedChoreId == nil || selectedPerformerIds.isEmpty || isSubmitting)
                 }
             }
         }
@@ -114,7 +106,7 @@ struct RecordChoreSheet: View {
 
     private func recordChore() async {
         guard let choreId = selectedChoreId,
-              let performerId = selectedPerformerId else { return }
+              !selectedPerformerIds.isEmpty else { return }
 
         isSubmitting = true
         errorMessage = nil
@@ -122,7 +114,7 @@ struct RecordChoreSheet: View {
         do {
             try await appState.recordChore(
                 choreId: choreId,
-                performerId: performerId,
+                performerIds: Array(selectedPerformerIds),
                 memo: memo.isEmpty ? nil : memo
             )
             dismiss()

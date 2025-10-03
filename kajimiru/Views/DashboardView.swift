@@ -118,10 +118,6 @@ struct DashboardView: View {
 
     private var dashboardSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("ダッシュボード")
-                .font(.title2.weight(.bold))
-                .padding(.horizontal)
-
             // Period selector
             Picker("表示期間", selection: $selectedPeriod) {
                 ForEach(Period.allCases, id: \.self) { period in
@@ -142,9 +138,6 @@ struct DashboardView: View {
 
     private func workloadCard(snapshot: WorkloadSnapshot) -> some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("家事分担状況")
-                .font(.headline)
-
             Text(DisplayFormatters.intervalDescription(snapshot.interval))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
@@ -154,15 +147,6 @@ struct DashboardView: View {
                     contributionRow(summary, totalWeight: snapshot.totalWeight)
                 }
             }
-
-            HStack {
-                Text("合計")
-                Spacer()
-                Text("\(snapshot.totalCount)件 / \(DisplayFormatters.weightDescription(snapshot.totalWeight))")
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .padding(.top, 8)
         }
         .padding()
         .background(
@@ -177,10 +161,6 @@ struct DashboardView: View {
             HStack {
                 Text(appState.memberDisplayName(for: summary.userId))
                     .font(.subheadline.weight(.semibold))
-                Spacer()
-                Text("\(summary.completedCount)件")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
 
             ProgressView(value: summary.shareOfTotalWeight(totalWeight))
@@ -188,8 +168,6 @@ struct DashboardView: View {
 
             HStack {
                 Text(percentageString(summary.shareOfTotalWeight(totalWeight)))
-                Spacer()
-                Text(DisplayFormatters.weightDescription(summary.totalWeight))
             }
             .font(.caption)
             .foregroundStyle(.secondary)

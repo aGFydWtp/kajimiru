@@ -48,6 +48,24 @@ struct ChoreListView: View {
                         }
                         .contextMenu {
                             Button {
+                                Task {
+                                    try? await appState.updateChore(
+                                        choreId: chore.id,
+                                        title: chore.title,
+                                        weight: chore.weight,
+                                        notes: chore.notes,
+                                        isFavorite: !chore.isFavorite
+                                    )
+                                }
+                            } label: {
+                                if chore.isFavorite {
+                                    Label("お気に入りから削除", systemImage: "star.slash")
+                                } else {
+                                    Label("お気に入りに追加", systemImage: "star")
+                                }
+                            }
+
+                            Button {
                                 editingChore = chore
                             } label: {
                                 Label("編集", systemImage: "pencil")
