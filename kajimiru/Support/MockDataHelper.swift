@@ -5,6 +5,14 @@ import KajimiruKit
 struct MockDataHelper {
     static let userId = UUID()
 
+    static let sampleMemos = [
+        "いつもより時間かかった",
+        "きれいに仕上がった",
+        "新しいスポンジ使用",
+        "ゴミ袋補充した",
+        "窓も拭いた"
+    ]
+
     static func createMVPData() -> (group: Group, members: [Member], chores: [Chore], logs: [ChoreLog]) {
         // デフォルトのメンバー作成
         let tarou = Member(
@@ -96,6 +104,7 @@ struct MockDataHelper {
                     let batchId = UUID()
                     let weightPerPerson = Double(chore.weight) / 2.0
                     let logTime = calendar.date(byAdding: .hour, value: -Int.random(in: 8...20), to: date) ?? date
+                    let memo = Bool.random() ? sampleMemos.randomElement() : nil
 
                     for member in members {
                         logs.append(ChoreLog(
@@ -103,6 +112,7 @@ struct MockDataHelper {
                             groupId: group.id,
                             performerId: member.id,
                             weight: weightPerPerson,
+                            memo: memo,
                             batchId: batchId,
                             performerCount: 2,
                             createdAt: logTime,
@@ -115,12 +125,14 @@ struct MockDataHelper {
                     // 一人でやった場合
                     let performer = members.randomElement()!
                     let logTime = calendar.date(byAdding: .hour, value: -Int.random(in: 8...20), to: date) ?? date
+                    let memo = Bool.random() ? sampleMemos.randomElement() : nil
 
                     logs.append(ChoreLog(
                         choreId: chore.id,
                         groupId: group.id,
                         performerId: performer.id,
                         weight: Double(chore.weight),
+                        memo: memo,
                         createdAt: logTime,
                         createdBy: userId,
                         updatedAt: logTime,

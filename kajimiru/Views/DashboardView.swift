@@ -90,7 +90,7 @@ struct DashboardView: View {
     }
 
     private var quickActionsGrid: some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
             ForEach(favoriteChores) { chore in
                 ChoreTile(chore: chore)
                     .contentShape(Rectangle())
@@ -218,24 +218,18 @@ struct ChoreTile: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: "star.fill")
-                    .font(.caption)
-                    .foregroundStyle(.yellow)
-                Spacer()
-                Text(DisplayFormatters.weightDescription(chore.weight))
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-            }
+            Image(systemName: "star.fill")
+                .font(.caption)
+                .foregroundStyle(.yellow)
 
             Text(chore.title)
-                .font(.subheadline.weight(.semibold))
+                .font(.headline)
                 .lineLimit(2)
                 .multilineTextAlignment(.leading)
 
             if let notes = chore.notes, !notes.isEmpty {
                 Text(notes)
-                    .font(.caption2)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
             }

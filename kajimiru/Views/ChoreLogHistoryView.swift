@@ -193,16 +193,15 @@ struct ChoreLogCard: View {
                 Text(choreName)
                     .font(.headline)
 
-                Label(performerNames, systemImage: "person.fill")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
                 if let memo = log.memo, !memo.isEmpty {
                     Text(memo)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                        .padding(.top, 4)
                 }
+
+                Label(performerNames, systemImage: "person.fill")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
             .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
