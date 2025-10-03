@@ -8,25 +8,39 @@ struct ChoreListView: View {
     @State private var choreToDelete: Chore?
     @State private var showingDeleteAlert = false
     @State private var recordingChore: Chore?
+    @State private var searchText = ""
+
+    var filteredChores: [Chore] {
+        if searchText.isEmpty {
+            return appState.chores
+        } else {
+            return appState.chores.filter { chore in
+                chore.title.localizedCaseInsensitiveContains(searchText) ||
+                (chore.notes?.localizedCaseInsensitiveContains(searchText) ?? false)
+            }
+        }
+    }
 
     var body: some View {
         List {
-            if appState.chores.isEmpty {
+            if filteredChores.isEmpty {
                 VStack(spacing: 16) {
-                    Image(systemName: "list.bullet")
+                    Image(systemName: searchText.isEmpty ? "list.bullet" : "magnifyingglass")
                         .font(.system(size: 48))
                         .foregroundStyle(.secondary)
-                    Text("家事が登録されていません")
+                    Text(searchText.isEmpty ? "家事が登録されていません" : "検索結果がありません")
                         .font(.headline)
-                    Text("右上の + ボタンから追加できます")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    if searchText.isEmpty {
+                        Text("右上の + ボタンから追加できます")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 .frame(maxWidth: .infinity)
                 .padding(40)
                 .listRowBackground(Color.clear)
             } else {
-                ForEach(appState.chores) { chore in
+                ForEach(filteredChores) { chore in
                     ChoreRow(chore: chore)
                         .contentShape(Rectangle())
                         .onTapGesture {
@@ -50,6 +64,7 @@ struct ChoreListView: View {
             }
         }
         .navigationTitle("家事リスト")
+        .searchable(text: $searchText, prompt: "家事名やメモで検索")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
@@ -86,8 +101,16 @@ struct ChoreRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(chore.title)
-                .font(.headline)
+            HStack(spacing: 6) {
+                Text(chore.title)
+                    .font(.headline)
+
+                if chore.isFavorite {
+                    Image(systemName: "star.fill")
+                        .font(.caption)
+                        .foregroundStyle(.yellow)
+                }
+            }
 
             HStack(spacing: 12) {
                 Label(
