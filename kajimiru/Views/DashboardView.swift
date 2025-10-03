@@ -118,6 +118,10 @@ struct DashboardView: View {
 
     private var dashboardSection: some View {
         VStack(alignment: .leading, spacing: 16) {
+            Text("家事比率")
+                .font(.title2.weight(.bold))
+                .padding(.horizontal)
+
             // Period selector
             Picker("表示期間", selection: $selectedPeriod) {
                 ForEach(Period.allCases, id: \.self) { period in
