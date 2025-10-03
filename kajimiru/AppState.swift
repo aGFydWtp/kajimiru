@@ -67,17 +67,41 @@ class AppState: ObservableObject {
         }
     }
 
-    func addChore(title: String, weight: Int, notes: String?) async throws {
+    func addChore(title: String, weight: Int, isFavorite: Bool = false, notes: String?) async throws {
         guard let group = group else { return }
 
         let draft = ChoreDraft(
             groupId: group.id,
             title: title,
             weight: weight,
+            isFavorite: isFavorite,
             notes: notes
         )
         let chore = try await choreService.createChore(draft: draft, createdBy: currentUserId)
         chores.append(chore)
+    }
+
+    func updateChore(choreId: UUID, title: String, weight: Int, notes: String?, isFavorite: Bool) async throws {
+        let update = ChoreUpdate(
+            title: title,
+            weight: weight,
+            notes: notes,
+            isFavorite: isFavorite
+        )
+        let updatedChore = try await choreService.updateChore(id: choreId, update: update, updatedBy: currentUserId)
+
+        if let index = chores.firstIndex(where: { $0.id == choreId }) {
+            chores[index] = updatedChore
+        }
+    }
+
+    func deleteChore(choreId: UUID) async {
+        do {
+            try await choreService.deleteChore(id: choreId, deletedBy: currentUserId)
+            chores.removeAll { $0.id == choreId }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     func recordChore(choreId: UUID, performerId: UUID, memo: String?) async throws {

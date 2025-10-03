@@ -5,8 +5,10 @@ public actor InMemoryChoreRepository: ChoreRepository {
 
     public init() {}
 
-    public func listChores(in groupId: UUID) async throws -> [Chore] {
-        chores.values.filter { $0.groupId == groupId }
+    public func listChores(in groupId: UUID, includeDeleted: Bool) async throws -> [Chore] {
+        chores.values.filter {
+            $0.groupId == groupId && (includeDeleted || $0.deletedAt == nil)
+        }
     }
 
     public func fetchChore(id: UUID) async throws -> Chore? {
@@ -15,13 +17,6 @@ public actor InMemoryChoreRepository: ChoreRepository {
 
     public func save(_ chore: Chore) async throws {
         chores[chore.id] = chore
-    }
-
-    public func deleteChore(id: UUID, in groupId: UUID) async throws {
-        guard let chore = chores[id], chore.groupId == groupId else {
-            throw KajimiruError.notFound
-        }
-        chores.removeValue(forKey: id)
     }
 }
 

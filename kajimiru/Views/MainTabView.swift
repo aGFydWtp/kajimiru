@@ -1,4 +1,5 @@
 import SwiftUI
+import KajimiruKit
 
 struct MainTabView: View {
     @StateObject private var appState = AppState()
@@ -59,20 +60,36 @@ struct RecordChoreSheet: View {
     @EnvironmentObject var appState: AppState
     @Environment(\.dismiss) var dismiss
 
+    let preselectedChore: Chore?
+
     @State private var selectedChoreId: UUID?
     @State private var selectedPerformerId: UUID?
     @State private var memo = ""
     @State private var isSubmitting = false
     @State private var errorMessage: String?
 
+    init(preselectedChore: Chore? = nil) {
+        self.preselectedChore = preselectedChore
+        _selectedChoreId = State(initialValue: preselectedChore?.id)
+    }
+
     var body: some View {
         NavigationStack {
             Form {
                 Section("家事") {
-                    Picker("実施した家事", selection: $selectedChoreId) {
-                        Text("選択してください").tag(nil as UUID?)
-                        ForEach(appState.chores) { chore in
-                            Text(chore.title).tag(chore.id as UUID?)
+                    if let preselectedChore {
+                        LabeledContent("家事名") {
+                            Text(preselectedChore.title)
+                        }
+                        LabeledContent("大変度") {
+                            Text(DisplayFormatters.weightDescription(preselectedChore.weight))
+                        }
+                    } else {
+                        Picker("実施した家事", selection: $selectedChoreId) {
+                            Text("選択してください").tag(nil as UUID?)
+                            ForEach(appState.chores) { chore in
+                                Text(chore.title).tag(chore.id as UUID?)
+                            }
                         }
                     }
                 }

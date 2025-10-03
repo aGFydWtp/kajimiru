@@ -2,10 +2,9 @@ import Foundation
 
 /// Handles persistence for chores shared within a group.
 public protocol ChoreRepository: Sendable {
-    func listChores(in groupId: UUID) async throws -> [Chore]
+    func listChores(in groupId: UUID, includeDeleted: Bool) async throws -> [Chore]
     func fetchChore(id: UUID) async throws -> Chore?
     func save(_ chore: Chore) async throws
-    func deleteChore(id: UUID, in groupId: UUID) async throws
 }
 
 /// Handles persistence for chore execution logs.

@@ -37,7 +37,7 @@ struct DashboardView: View {
         .task {
             await loadSnapshot()
         }
-        .onChange(of: selectedPeriod) { _ in
+        .onChange(of: selectedPeriod) {
             Task { await loadSnapshot() }
         }
     }
