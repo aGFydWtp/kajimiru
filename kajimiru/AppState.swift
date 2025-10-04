@@ -590,7 +590,7 @@ class AppState: ObservableObject {
             throw AppStateError.groupRequired
         }
 
-        isLoading = true
+        // Don't set isLoading here to avoid ContentView switching to ProgressView
         errorMessage = nil
 
         do {
@@ -601,9 +601,8 @@ class AppState: ObservableObject {
                 updatedBy: currentUserId
             )
             self.group = updatedGroup
-            isLoading = false
+            print("✅ Group updated: \(updatedGroup.name), icon: \(updatedGroup.icon ?? "nil")")
         } catch {
-            isLoading = false
             errorMessage = error.localizedDescription
             throw error
         }

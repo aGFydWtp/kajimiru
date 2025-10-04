@@ -175,25 +175,39 @@ struct GroupSettingsView: View {
     }
 
     private func saveGroupName() async {
-        guard let group = appState.group else { return }
+        guard let group = appState.group else {
+            print("❌ saveGroupName: No group")
+            return
+        }
 
         let trimmedName = editedGroupName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedName.isEmpty else { return }
+        guard !trimmedName.isEmpty else {
+            print("❌ saveGroupName: Empty name")
+            return
+        }
 
+        print("🔍 saveGroupName: Updating to '\(trimmedName)'")
         do {
             try await appState.updateGroup(name: trimmedName, icon: group.icon)
+            print("✅ saveGroupName: Success")
             isEditingName = false
         } catch {
+            print("❌ saveGroupName: Error - \(error)")
             errorMessage = "グループ名の更新に失敗しました: \(error.localizedDescription)"
             showError = true
         }
     }
 
     private func saveGroupIcon() async {
-        guard let group = appState.group else { return }
+        guard let group = appState.group else {
+            print("❌ saveGroupIcon: No group")
+            return
+        }
 
+        print("🔍 saveGroupIcon: Updating to '\(editedGroupIcon)'")
         do {
             try await appState.updateGroup(name: group.name, icon: editedGroupIcon)
+            print("✅ saveGroupIcon: Success")
         } catch {
             errorMessage = "グループアイコンの更新に失敗しました: \(error.localizedDescription)"
             showError = true
