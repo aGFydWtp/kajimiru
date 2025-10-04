@@ -9,7 +9,7 @@ struct GroupSettingsView: View {
 
     @State private var editedGroupName: String = ""
     @State private var editedGroupIcon: String = ""
-    @State private var isEditingName = false
+    @State private var showEditNameDialog = false
     @State private var showCreateGroup = false
     @State private var showJoinGroup = false
     @State private var showError = false
@@ -30,39 +30,20 @@ struct GroupSettingsView: View {
             // Current Group Section
             if let group = appState.group {
                 Section {
-                    if isEditingName && isAdmin {
-                        HStack {
-                            TextField("グループ名", text: $editedGroupName)
-                                .textFieldStyle(.roundedBorder)
-
-                            Button("保存") {
-                                Task {
-                                    await saveGroupName()
-                                }
-                            }
-                            .disabled(editedGroupName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-
-                            Button("キャンセル") {
-                                isEditingName = false
-                                editedGroupName = group.name
-                            }
+                    HStack {
+                        Label {
+                            Text(group.name)
+                                .font(.headline)
+                        } icon: {
+                            Image(systemName: group.icon ?? "house.fill")
                         }
-                    } else {
-                        HStack {
-                            Label {
-                                Text(group.name)
-                                    .font(.headline)
-                            } icon: {
-                                Image(systemName: group.icon ?? "house.fill")
-                            }
 
-                            Spacer()
+                        Spacer()
 
-                            if isAdmin {
-                                Button("編集") {
-                                    isEditingName = true
-                                    editedGroupName = group.name
-                                }
+                        if isAdmin {
+                            Button("編集") {
+                                editedGroupName = group.name
+                                showEditNameDialog = true
                             }
                         }
                     }
@@ -158,6 +139,19 @@ struct GroupSettingsView: View {
         } message: {
             Text(errorMessage)
         }
+        .alert("グループ名を編集", isPresented: $showEditNameDialog) {
+            TextField("グループ名", text: $editedGroupName)
+            Button("保存") {
+                Task {
+                    await saveGroupName()
+                }
+            }
+            Button("キャンセル", role: .cancel) {
+                showEditNameDialog = false
+            }
+        } message: {
+            Text("新しいグループ名を入力してください")
+        }
     }
 
     // MARK: - Actions
@@ -177,23 +171,28 @@ struct GroupSettingsView: View {
     private func saveGroupName() async {
         guard let group = appState.group else {
             print("❌ saveGroupName: No group")
+            showEditNameDialog = false
             return
         }
 
         let trimmedName = editedGroupName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else {
             print("❌ saveGroupName: Empty name")
+            errorMessage = "グループ名を入力してください"
+            showEditNameDialog = false
+            showError = true
             return
         }
 
-        print("🔍 saveGroupName: Updating to '\(trimmedName)'")
+        print("🔍 saveGroupName: Updating from '\(group.name)' to '\(trimmedName)', icon: \(group.icon ?? "nil")")
         do {
             try await appState.updateGroup(name: trimmedName, icon: group.icon)
-            print("✅ saveGroupName: Success")
-            isEditingName = false
+            print("✅ saveGroupName: Updated successfully")
+            showEditNameDialog = false
         } catch {
             print("❌ saveGroupName: Error - \(error)")
             errorMessage = "グループ名の更新に失敗しました: \(error.localizedDescription)"
+            showEditNameDialog = false
             showError = true
         }
     }
