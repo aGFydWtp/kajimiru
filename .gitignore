@@ -9,3 +9,12 @@ DerivedData/
 
 # Firebase Configuration (contains API keys)
 GoogleService-Info.plist
+
+# Firebase Emulator
+firestore-debug.log
+ui-debug.log
+firebase-debug.log
+*-debug.log
+
+# Serena (MCP)
+.serena/
