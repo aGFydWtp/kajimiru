@@ -164,8 +164,11 @@ struct GroupSettingsView: View {
 
     private func loadAvailableGroups() async {
         do {
+            print("🔍 GroupSettingsView: Loading available groups...")
             try await appState.loadAvailableGroups()
+            print("✅ GroupSettingsView: Loaded \(appState.availableGroups.count) groups")
         } catch {
+            print("❌ GroupSettingsView: Error loading groups - \(error)")
             errorMessage = "グループ一覧の読み込みに失敗しました: \(error.localizedDescription)"
             showError = true
         }

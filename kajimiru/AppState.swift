@@ -611,19 +611,24 @@ class AppState: ObservableObject {
 
     /// Load all groups the current user belongs to
     func loadAvailableGroups() async throws {
+        print("🔍 AppState.loadAvailableGroups: Starting...")
         guard let authUID = authService?.userID else {
+            print("❌ AppState.loadAvailableGroups: No auth UID")
             throw AppStateError.authenticationRequired
         }
+        print("🔍 AppState.loadAvailableGroups: Auth UID = \(authUID)")
 
-        isLoading = true
+        // Don't set isLoading here to avoid ContentView switching to ProgressView
         errorMessage = nil
 
         do {
+            print("🔍 AppState.loadAvailableGroups: Calling memberRepo.listGroupsForUser...")
             let groupIds = try await memberRepo.listGroupsForUser(firebaseUid: authUID)
+            print("🔍 AppState.loadAvailableGroups: Found \(groupIds.count) group IDs: \(groupIds)")
             availableGroups = try await fetchGroups(ids: groupIds)
-            isLoading = false
+            print("✅ AppState.loadAvailableGroups: Loaded \(availableGroups.count) groups")
         } catch {
-            isLoading = false
+            print("❌ AppState.loadAvailableGroups: Error - \(error)")
             errorMessage = error.localizedDescription
             throw error
         }
