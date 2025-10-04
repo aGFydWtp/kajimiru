@@ -170,8 +170,8 @@ struct AddChoreSheet: View {
         NavigationStack {
             Form {
                 Section("家事の内容") {
-                    TextField("家事名", text: $title)
-                    TextField("メモ（任意）", text: $notes, axis: .vertical)
+                    TextField("例：洗濯を回す", text: $title)
+                    TextField("例：洗剤の量はカップの半分。乾燥までやるときは、お風呂のドアを開けて換気扇を回すこと！", text: $notes, axis: .vertical)
                         .lineLimit(3...6)
                 }
 
@@ -183,7 +183,7 @@ struct AddChoreSheet: View {
                     }
                     .pickerStyle(.segmented)
 
-                    Text("一番簡単な家事を1として、その何倍大変かを選択")
+                    Text("一番簡単な家事を1として、その何倍大変かを選んでね。\n\nヒント：家事をやる人によって大変さが違う場合は、\n「皿洗い(たろう用)」、「皿洗い(はなこ用)」のように、それぞれ専用の家事を作成して、大変度を変えてみるのも良いかも💡")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -264,8 +264,8 @@ struct EditChoreSheet: View {
         NavigationStack {
             Form {
                 Section("家事の内容") {
-                    TextField("家事名", text: $title)
-                    TextField("メモ（任意）", text: $notes, axis: .vertical)
+                    TextField("例：洗濯を回す", text: $title)
+                    TextField("例：洗剤の量はカップの半分。乾燥までやるときは、お風呂のドアを開けて換気扇を回すこと！", text: $notes, axis: .vertical)
                         .lineLimit(3...6)
                 }
 
@@ -277,7 +277,7 @@ struct EditChoreSheet: View {
                     }
                     .pickerStyle(.segmented)
 
-                    Text("一番簡単な家事を1として、その何倍大変かを選択")
+                    Text("一番簡単な家事を1として、その何倍大変かを選んでね。\n\nヒント：家事をやる人によって大変さが違う場合は、\n「皿洗い(たろう用)」、「皿洗い(はなこ用)」のように、それぞれ専用の家事を作成して、大変度を変えてみるのも良いかも💡")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

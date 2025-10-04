@@ -31,7 +31,7 @@ struct SettingsView: View {
                 }
             }
 
-            Section("メンバー") {
+            Section("家族・ルームメイト") {
                 if appState.members.isEmpty {
                     Text("メンバーがいません")
                         .foregroundStyle(.secondary)

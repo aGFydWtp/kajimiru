@@ -60,7 +60,7 @@ struct RecordChoreSheet: View {
             Form {
                 Text(preselectedChore.title)
                 
-                Section("実施者") {
+                Section("家事をした人は誰ですか？") {
                     ForEach(appState.members.filter { !$0.isDeleted }) { member in
                         Toggle(isOn: Binding(
                             get: { selectedPerformerIds.contains(member.id) },
@@ -78,7 +78,7 @@ struct RecordChoreSheet: View {
                 }
 
                 Section("メモ（任意）") {
-                    TextField("メモ", text: $memo, axis: .vertical)
+                    TextField("例：そろそろ洗剤を買いに行ったほうがいいかも", text: $memo, axis: .vertical)
                         .padding( .vertical, 8)
                         .lineLimit(2...4)
                 }

@@ -30,12 +30,14 @@ struct GroupSettingsView: View {
             // Current Group Section
             if let group = appState.group {
                 Section {
+                    // Group name row
                     HStack {
                         Label {
                             Text(group.name)
                                 .font(.headline)
                         } icon: {
                             Image(systemName: group.icon ?? "house.fill")
+                                .foregroundStyle(.blue)
                         }
 
                         Spacer()
@@ -47,35 +49,40 @@ struct GroupSettingsView: View {
                             }
                         }
                     }
-                } header: {
-                    Text("現在のグループ")
-                }
 
-                // Admin-only icon selection
-                if isAdmin {
-                    Section {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 16) {
-                                ForEach(groupIcons, id: \.self) { icon in
-                                    Button {
-                                        editedGroupIcon = icon
-                                        Task {
-                                            await saveGroupIcon()
+                    // Icon selection (admin only)
+                    if isAdmin {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("アイコン")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 16) {
+                                    ForEach(groupIcons, id: \.self) { icon in
+                                        Button {
+                                            editedGroupIcon = icon
+                                            Task {
+                                                await saveGroupIcon()
+                                            }
+                                        } label: {
+                                            Image(systemName: icon)
+                                                .font(.title2)
+                                                .foregroundStyle(icon == (group.icon ?? "house.fill") ? .blue : .primary)
+                                                .frame(width: 50, height: 50)
+                                                .background(icon == (group.icon ?? "house.fill") ? Color.blue.opacity(0.15) : Color.gray.opacity(0.1))
+                                                .cornerRadius(8)
                                         }
-                                    } label: {
-                                        Image(systemName: icon)
-                                            .font(.title2)
-                                            .frame(width: 50, height: 50)
-                                            .background(icon == (group.icon ?? "house.fill") ? Color.blue.opacity(0.2) : Color.clear)
-                                            .cornerRadius(8)
+                                        .buttonStyle(.plain)
                                     }
                                 }
+                                .padding(.vertical, 4)
                             }
-                            .padding(.vertical, 8)
                         }
-                    } header: {
-                        Text("グループアイコン")
+                        .padding(.vertical, 4)
                     }
+                } header: {
+                    Text("グループ情報")
                 }
             }
 
@@ -110,7 +117,7 @@ struct GroupSettingsView: View {
             // Create New Group Section
             Section {
                 NavigationLink {
-                    InitialSetupView()
+                    InitialSetupView(title: "新しいグループを作成", isInitialSetup: false, showInviteOption: false)
                         .environmentObject(appState)
                 } label: {
                     Label("新しいグループを作成", systemImage: "plus.circle")
@@ -119,16 +126,25 @@ struct GroupSettingsView: View {
 
             // Join Group Section
             Section {
-                NavigationLink {
-                    InviteCodeInputView()
-                        .environmentObject(appState)
+                Button {
+                    showJoinGroup = true
                 } label: {
                     Label("招待コードでグループに参加", systemImage: "arrow.right.circle")
                 }
+                
+//                NavigationLink {
+//                    InviteCodeInputView()
+//                        .environmentObject(appState)
+//                } label: {
+//                    Label("招待コードでグループに参加", systemImage: "arrow.right.circle")
+//                }
             }
         }
         .navigationTitle("グループ設定")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showJoinGroup) {
+            InviteCodeInputView()
+        }
         .task {
             await loadAvailableGroups()
         }
@@ -158,11 +174,8 @@ struct GroupSettingsView: View {
 
     private func loadAvailableGroups() async {
         do {
-            print("🔍 GroupSettingsView: Loading available groups...")
             try await appState.loadAvailableGroups()
-            print("✅ GroupSettingsView: Loaded \(appState.availableGroups.count) groups")
         } catch {
-            print("❌ GroupSettingsView: Error loading groups - \(error)")
             errorMessage = "グループ一覧の読み込みに失敗しました: \(error.localizedDescription)"
             showError = true
         }
@@ -170,27 +183,22 @@ struct GroupSettingsView: View {
 
     private func saveGroupName() async {
         guard let group = appState.group else {
-            print("❌ saveGroupName: No group")
             showEditNameDialog = false
             return
         }
 
         let trimmedName = editedGroupName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else {
-            print("❌ saveGroupName: Empty name")
             errorMessage = "グループ名を入力してください"
             showEditNameDialog = false
             showError = true
             return
         }
 
-        print("🔍 saveGroupName: Updating from '\(group.name)' to '\(trimmedName)', icon: \(group.icon ?? "nil")")
         do {
             try await appState.updateGroup(name: trimmedName, icon: group.icon)
-            print("✅ saveGroupName: Updated successfully")
             showEditNameDialog = false
         } catch {
-            print("❌ saveGroupName: Error - \(error)")
             errorMessage = "グループ名の更新に失敗しました: \(error.localizedDescription)"
             showEditNameDialog = false
             showError = true
@@ -199,14 +207,11 @@ struct GroupSettingsView: View {
 
     private func saveGroupIcon() async {
         guard let group = appState.group else {
-            print("❌ saveGroupIcon: No group")
             return
         }
 
-        print("🔍 saveGroupIcon: Updating to '\(editedGroupIcon)'")
         do {
             try await appState.updateGroup(name: group.name, icon: editedGroupIcon)
-            print("✅ saveGroupIcon: Success")
         } catch {
             errorMessage = "グループアイコンの更新に失敗しました: \(error.localizedDescription)"
             showError = true

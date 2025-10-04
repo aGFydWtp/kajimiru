@@ -59,6 +59,7 @@ struct ChoreLogHistoryView: View {
         }
         .background(Color(.systemGroupedBackground))
         .navigationTitle("記録")
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private var monthPicker: some View {

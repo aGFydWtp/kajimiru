@@ -146,12 +146,10 @@ class AppState: ObservableObject {
     /// Check if the current user exists and has a group
     func checkUserStatus() async {
         guard let authUID = authService?.userID else {
-            print("🔍 checkUserStatus: No auth UID")
             hasCompletedSetup = false
             return
         }
 
-        print("🔍 checkUserStatus: Starting for UID: \(authUID)")
         isLoading = true
         errorMessage = nil
 
@@ -163,20 +161,16 @@ class AppState: ObservableObject {
 
                 if let user = user {
                     currentUser = user
-                    print("🔍 checkUserStatus: User found: \(user.id)")
 
                     // Get all groups the user belongs to
                     let groupIds = try await firestoreMemberRepo.listGroupsForUser(firebaseUid: authUID)
-                    print("🔍 checkUserStatus: Found \(groupIds.count) groups")
 
                     if groupIds.isEmpty {
                         // No groups found - show initial setup
-                        print("🔍 checkUserStatus: No groups - showing initial setup")
                         hasCompletedSetup = false
                         needsGroupSelection = false
                     } else if groupIds.count == 1 {
                         // Only one group - auto-select it
-                        print("🔍 checkUserStatus: Single group - auto-loading: \(groupIds[0])")
                         try await loadUserGroup(groupId: groupIds[0])
                         lastSelectedGroupId = groupIds[0]
                         hasCompletedOnboardingPersisted = true
@@ -191,7 +185,6 @@ class AppState: ObservableObject {
 
                         hasCompletedSetup = true
                         needsGroupSelection = false
-                        print("🔍 checkUserStatus: ✅ Setup complete - should show MainTabView")
                     } else {
                         // Multiple groups - show group selection
                         availableGroups = try await fetchGroups(ids: groupIds)
@@ -218,15 +211,12 @@ class AppState: ObservableObject {
                     }
                 } else {
                     // User doesn't exist in Firestore yet - check if onboarding was completed
-                    print("🔍 checkUserStatus: No user in Firestore - hasCompletedOnboarding: \(hasCompletedOnboardingPersisted)")
                     hasCompletedSetup = hasCompletedOnboardingPersisted
                     needsGroupSelection = false
                 }
             }
-            print("🔍 checkUserStatus: Completed - hasCompletedSetup: \(hasCompletedSetup), needsGroupSelection: \(needsGroupSelection)")
             isLoading = false
         } catch {
-            print("🔍 checkUserStatus: ❌ Error: \(error.localizedDescription)")
             errorMessage = error.localizedDescription
             isLoading = false
             hasCompletedSetup = false
@@ -252,7 +242,6 @@ class AppState: ObservableObject {
             members = try await memberRepo.listMembers(in: group.id, includeDeleted: false)
             chores = try await choreRepo.listChores(in: group.id, includeDeleted: false)
             choreLogs = try await choreLogRepo.listLogs(in: group.id, since: nil)
-            print("✅ Successfully loaded group: \(group.name)")
         } else {
             throw KajimiruError.notFound
         }
@@ -601,7 +590,6 @@ class AppState: ObservableObject {
                 updatedBy: currentUserId
             )
             self.group = updatedGroup
-            print("✅ Group updated: \(updatedGroup.name), icon: \(updatedGroup.icon ?? "nil")")
         } catch {
             errorMessage = error.localizedDescription
             throw error
@@ -610,24 +598,17 @@ class AppState: ObservableObject {
 
     /// Load all groups the current user belongs to
     func loadAvailableGroups() async throws {
-        print("🔍 AppState.loadAvailableGroups: Starting...")
         guard let authUID = authService?.userID else {
-            print("❌ AppState.loadAvailableGroups: No auth UID")
             throw AppStateError.authenticationRequired
         }
-        print("🔍 AppState.loadAvailableGroups: Auth UID = \(authUID)")
 
         // Don't set isLoading here to avoid ContentView switching to ProgressView
         errorMessage = nil
 
         do {
-            print("🔍 AppState.loadAvailableGroups: Calling memberRepo.listGroupsForUser...")
             let groupIds = try await memberRepo.listGroupsForUser(firebaseUid: authUID)
-            print("🔍 AppState.loadAvailableGroups: Found \(groupIds.count) group IDs: \(groupIds)")
             availableGroups = try await fetchGroups(ids: groupIds)
-            print("✅ AppState.loadAvailableGroups: Loaded \(availableGroups.count) groups")
         } catch {
-            print("❌ AppState.loadAvailableGroups: Error - \(error)")
             errorMessage = error.localizedDescription
             throw error
         }

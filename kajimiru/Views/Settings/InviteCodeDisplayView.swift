@@ -78,14 +78,6 @@ struct InviteCodeDisplayView: View {
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
-
-                            HStack(spacing: 12) {
-                                Image(systemName: "infinity")
-                                    .foregroundStyle(.secondary)
-                                Text("使用回数: 無制限")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
                         }
                         .padding()
 

@@ -4,25 +4,37 @@ struct InitialSetupView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var authService: AuthenticationService
 
+    let title: String
+    let isInitialSetup: Bool
+    let showInviteOption: Bool
+
     @State private var groupName = "私の家"
     @State private var yourName = ""
     @State private var memberNames: [String] = []
     @State private var showError = false
     @State private var showingInviteCodeInput = false
 
+    init(title: String = "初期設定", isInitialSetup: Bool = true, showInviteOption: Bool = true) {
+        self.title = title
+        self.isInitialSetup = isInitialSetup
+        self.showInviteOption = showInviteOption
+    }
+
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Kajimiruへようこそ！")
-                            .font(.title2.weight(.bold))
-                        Text("まずはグループとメンバーを作成しましょう")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                if isInitialSetup {
+                    Section {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Kajimiruへようこそ！")
+                                .font(.title2.weight(.bold))
+                            Text("まずはグループとメンバーを作成しましょう")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        .listRowBackground(Color.clear)
+                        .padding(.vertical, 8)
                     }
-                    .listRowBackground(Color.clear)
-                    .padding(.vertical, 8)
                 }
 
                 Section {
@@ -87,22 +99,25 @@ struct InitialSetupView: View {
                     .disabled(!isValid || appState.isLoading)
                 }
 
-                Section {
-                    Button {
-                        showingInviteCodeInput = true
-                    } label: {
+                if showInviteOption {
+                    Section {
                         HStack {
                             Spacer()
-                            Text("招待コードで参加")
-                                .font(.headline)
+                            Button {
+                                showingInviteCodeInput = true
+                            } label: {
+                                Text("招待コードで参加")
+                                    .font(.subheadline)
+                            }
                             Spacer()
                         }
+                        .listRowBackground(Color.clear)
+                    } footer: {
+                        Text("既存のグループに招待コードで参加できます")
                     }
-                } footer: {
-                    Text("既存のグループに招待コードで参加できます")
                 }
             }
-            .navigationTitle("初期設定")
+            .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showingInviteCodeInput) {
                 InviteCodeInputView()
