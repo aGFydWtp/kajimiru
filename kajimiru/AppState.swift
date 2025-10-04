@@ -581,6 +581,91 @@ class AppState: ObservableObject {
             throw error
         }
     }
+
+    // MARK: - Group Management
+
+    /// Update group name and icon
+    func updateGroup(name: String, icon: String?) async throws {
+        guard let group = group else {
+            throw AppStateError.groupRequired
+        }
+
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            let updatedGroup = try await groupService.updateGroup(
+                groupId: group.id,
+                name: name,
+                icon: icon,
+                updatedBy: currentUserId
+            )
+            self.group = updatedGroup
+            isLoading = false
+        } catch {
+            isLoading = false
+            errorMessage = error.localizedDescription
+            throw error
+        }
+    }
+
+    /// Load all groups the current user belongs to
+    func loadAvailableGroups() async throws {
+        guard let authUID = authService?.userID,
+              let firestoreMemberRepo = memberRepo as? FirestoreMemberRepository else {
+            throw AppStateError.authenticationRequired
+        }
+
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            let groupIds = try await firestoreMemberRepo.listGroupsForUser(firebaseUid: authUID)
+            availableGroups = try await fetchGroups(ids: groupIds)
+            isLoading = false
+        } catch {
+            isLoading = false
+            errorMessage = error.localizedDescription
+            throw error
+        }
+    }
+
+    /// Switch to a different group
+    func switchToGroup(groupId: UUID) async throws {
+        guard let user = currentUser else {
+            throw AppStateError.authenticationRequired
+        }
+
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            // Load the target group
+            guard let targetGroup = try await groupRepo.fetchGroup(id: groupId) else {
+                throw AppStateError.groupRequired
+            }
+
+            // Update user's current group
+            var updatedUser = user
+            updatedUser.currentGroupId = groupId
+            try await userRepo.save(updatedUser)
+
+            // Update local state
+            self.currentUser = updatedUser
+
+            // Load group data
+            try await loadUserGroup(groupId: groupId)
+
+            // Persist to UserDefaults
+            lastSelectedGroupId = groupId
+
+            isLoading = false
+        } catch {
+            isLoading = false
+            errorMessage = error.localizedDescription
+            throw error
+        }
+    }
 }
 
 // MARK: - Errors

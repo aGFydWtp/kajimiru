@@ -12,14 +12,21 @@ struct SettingsView: View {
         List {
             Section("グループ情報") {
                 if let group = appState.group {
-                    HStack {
-                        if let icon = group.icon {
-                            Image(systemName: icon)
-                                .font(.title2)
-                                .foregroundStyle(.red)
+                    NavigationLink {
+                        GroupSettingsView()
+                            .environmentObject(appState)
+                    } label: {
+                        HStack {
+                            if let icon = group.icon {
+                                Image(systemName: icon)
+                                    .font(.title2)
+                                    .foregroundStyle(.red)
+                            }
+                            Text(group.name)
+                                .font(.headline)
+                            
+                            Spacer()
                         }
-                        Text(group.name)
-                            .font(.headline)
                     }
                 }
             }
