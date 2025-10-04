@@ -3,6 +3,8 @@ import KajimiruKit
 
 struct SettingsView: View {
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var authService: AuthenticationService
+    @State private var showingSignOutAlert = false
 
     var body: some View {
         List {
@@ -31,6 +33,24 @@ struct SettingsView: View {
                 }
             }
 
+            Section("アカウント") {
+                if let email = authService.userEmail {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("ログイン中")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(email)
+                            .font(.body)
+                    }
+                }
+
+                Button(role: .destructive) {
+                    showingSignOutAlert = true
+                } label: {
+                    Label("サインアウト", systemImage: "rectangle.portrait.and.arrow.right")
+                }
+            }
+
             Section {
                 Text("MVP版では、メンバー管理機能は未実装です")
                     .font(.caption)
@@ -38,6 +58,18 @@ struct SettingsView: View {
             }
         }
         .navigationTitle("設定")
+        .alert("サインアウト", isPresented: $showingSignOutAlert) {
+            Button("キャンセル", role: .cancel) { }
+            Button("サインアウト", role: .destructive) {
+                do {
+                    try authService.signOut()
+                } catch {
+                    // Error handling
+                }
+            }
+        } message: {
+            Text("サインアウトしますか？")
+        }
     }
 }
 
@@ -79,10 +111,6 @@ struct MemberRow: View {
 #Preview {
     NavigationStack {
         SettingsView()
-            .environmentObject({
-                let state = AppState()
-                Task { await state.loadMVPData() }
-                return state
-            }())
+            .environmentObject(AppState())
     }
 }

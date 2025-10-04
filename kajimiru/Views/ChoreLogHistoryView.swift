@@ -223,10 +223,6 @@ struct ChoreLogCard: View {
 #Preview {
     NavigationStack {
         ChoreLogHistoryView()
-            .environmentObject({
-                let state = AppState()
-                Task { await state.loadMVPData() }
-                return state
-            }())
+            .environmentObject(AppState())
     }
 }

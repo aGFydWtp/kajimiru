@@ -1,5 +1,10 @@
 import Foundation
 
+// Protocol for Firestore-specific chore repository methods
+public protocol FirestoreChoreRepositoryProtocol: ChoreRepository {
+    func fetchChore(id: UUID, in groupId: UUID) async throws -> Chore?
+}
+
 public struct ChoreLogDraft: Sendable {
     public var groupId: UUID
     public var choreId: UUID
@@ -130,6 +135,15 @@ public final class ChoreLogService: Sendable {
     }
 
     private func fetchChore(id: UUID, groupId: UUID) async throws -> Chore {
+        // Try Firestore-specific method first
+        if let firestoreRepo = choreRepository as? any FirestoreChoreRepositoryProtocol {
+            guard let chore = try await firestoreRepo.fetchChore(id: id, in: groupId) else {
+                throw KajimiruError.validationFailed(reason: "Chore not found in group.")
+            }
+            return chore
+        }
+
+        // Fallback to standard method for other implementations
         guard let chore = try await choreRepository.fetchChore(id: id), chore.groupId == groupId else {
             throw KajimiruError.validationFailed(reason: "Chore does not belong to the provided group.")
         }

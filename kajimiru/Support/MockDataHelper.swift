@@ -14,11 +14,22 @@ struct MockDataHelper {
     ]
 
     static func createMVPData() -> (group: Group, members: [Member], chores: [Chore], logs: [ChoreLog]) {
+        // デフォルトのグループ作成
+        let group = Group(
+            name: "自宅",
+            icon: "house.fill",
+            members: [],
+            createdBy: userId,
+            updatedBy: userId
+        )
+
         // デフォルトのメンバー作成
         let tarou = Member(
             userId: nil,
             displayName: "たろう",
             avatarURL: nil,
+            groupId: group.id,
+            role: .admin,
             createdBy: userId,
             updatedBy: userId
         )
@@ -27,20 +38,13 @@ struct MockDataHelper {
             userId: nil,
             displayName: "はなこ",
             avatarURL: nil,
+            groupId: group.id,
+            role: .member,
             createdBy: userId,
             updatedBy: userId
         )
 
         let members = [tarou, hanako]
-
-        // デフォルトのグループ作成
-        let group = Group(
-            name: "自宅",
-            icon: "house.fill",
-            members: members,
-            createdBy: userId,
-            updatedBy: userId
-        )
 
         // サンプル家事
         let chores = [

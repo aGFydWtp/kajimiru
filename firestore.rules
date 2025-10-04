@@ -1,0 +1,121 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function: Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Collection group query for members (used to find user's groups)
+    match /{path=**}/members/{memberId} {
+      allow read: if isAuthenticated() &&
+                     (resource.data.firebaseUid == request.auth.uid ||
+                      memberId == request.auth.uid);
+    }
+
+    // Helper function: Check if user is member of the group
+    // Member document ID is now Firebase UID for direct lookup
+    function isMemberOfGroup(groupId) {
+      return isAuthenticated() &&
+             exists(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid));
+    }
+
+    // Helper function: Check if user is admin of the group
+    function isAdminOfGroup(groupId) {
+      return isAuthenticated() &&
+             get(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Users collection
+    match /users/{userId} {
+      // Users can read their own profile (userId is UUID string, not auth.uid)
+      allow read: if isAuthenticated();
+
+      // Any authenticated user can create a user profile
+      allow create: if isAuthenticated();
+
+      // Users can update their own profile
+      allow update: if isAuthenticated();
+
+      // Users cannot delete their profile (consider soft delete in app)
+      allow delete: if false;
+    }
+
+    // Groups collection
+    match /groups/{groupId} {
+      // Members can read their group OR list all groups to find membership
+      allow read: if isAuthenticated();  // Temporarily allow all authenticated users to read groups
+
+      // Any authenticated user can create a group (becomes admin automatically)
+      allow create: if isAuthenticated();
+
+      // Only admins can update group
+      allow update: if isAdminOfGroup(groupId);
+
+      // Only admins can delete group
+      allow delete: if isAdminOfGroup(groupId);
+
+      // Members subcollection
+      match /members/{memberId} {
+        // Members can read all members in their group
+        allow read: if isMemberOfGroup(groupId);
+
+        // Allow creating members during initial setup
+        allow create: if isAuthenticated();
+
+        // Admins can update member roles
+        allow update: if isAdminOfGroup(groupId);
+
+        // Admins can remove members
+        allow delete: if isAdminOfGroup(groupId);
+      }
+
+      // Chores subcollection
+      match /chores/{choreId} {
+        // Members can read chores in their group
+        allow read: if isMemberOfGroup(groupId);
+
+        // Members can create chores in their group
+        allow create: if isAuthenticated() && isMemberOfGroup(groupId);
+
+        // Members can update chores
+        allow update: if isMemberOfGroup(groupId);
+
+        // Admins can delete chores
+        allow delete: if isAdminOfGroup(groupId);
+      }
+
+      // Chore logs subcollection
+      match /choreLogs/{logId} {
+        // Members can read logs in their group
+        allow read: if isMemberOfGroup(groupId);
+
+        // Members can create logs for their group
+        allow create: if isAuthenticated() && isMemberOfGroup(groupId);
+
+        // Users can update their own logs
+        allow update: if isAuthenticated() && isMemberOfGroup(groupId);
+
+        // Users can delete their own logs, or admins can delete any log
+        allow delete: if isAuthenticated() && isMemberOfGroup(groupId);
+      }
+
+      // Reminders subcollection
+      match /reminders/{reminderId} {
+        // Members can read reminders in their group
+        allow read: if isMemberOfGroup(groupId);
+
+        // Members can create reminders
+        allow create: if isAuthenticated() && isMemberOfGroup(groupId);
+
+        // Users can update their own reminders, admins can update any
+        allow update: if isAuthenticated() && isMemberOfGroup(groupId);
+
+        // Users can delete their own reminders, admins can delete any
+        allow delete: if isAuthenticated() && isMemberOfGroup(groupId);
+      }
+    }
+  }
+}

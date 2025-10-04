@@ -335,10 +335,6 @@ struct EditChoreSheet: View {
 #Preview {
     NavigationStack {
         ChoreListView()
-            .environmentObject({
-                let state = AppState()
-                Task { await state.loadMVPData() }
-                return state
-            }())
+            .environmentObject(AppState())
     }
 }

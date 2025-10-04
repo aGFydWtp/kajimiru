@@ -119,6 +119,11 @@ public actor InMemoryMemberRepository: MemberRepository {
 
     public func save(_ member: Member) async throws {
         members[member.id] = member
+        // Auto-associate member with group
+        if groupMembers[member.groupId] == nil {
+            groupMembers[member.groupId] = []
+        }
+        groupMembers[member.groupId]?.insert(member.id)
     }
 
     public func softDeleteMember(id: UUID, in groupId: UUID, deletedBy: UUID) async throws {
@@ -129,11 +134,4 @@ public actor InMemoryMemberRepository: MemberRepository {
         members[id] = member
     }
 
-    // Internal helper to associate members with groups
-    func associateMemberWithGroup(memberId: UUID, groupId: UUID) {
-        if groupMembers[groupId] == nil {
-            groupMembers[groupId] = []
-        }
-        groupMembers[groupId]?.insert(memberId)
-    }
 }

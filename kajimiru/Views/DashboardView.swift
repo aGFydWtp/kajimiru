@@ -251,10 +251,6 @@ struct ChoreTile: View {
 #Preview {
     NavigationStack {
         DashboardView()
-            .environmentObject({
-                let state = AppState()
-                Task { await state.loadMVPData() }
-                return state
-            }())
+            .environmentObject(AppState())
     }
 }

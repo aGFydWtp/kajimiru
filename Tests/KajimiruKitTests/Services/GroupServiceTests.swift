@@ -2,164 +2,211 @@ import XCTest
 @testable import KajimiruKit
 
 final class GroupServiceTests: XCTestCase {
-    func testCreateGroupAssignsOwnerAndMembers() async throws {
-        let ownerId = UUID()
-        let invitee = UUID()
+    func testCreateGroupTrimsNameAndIcon() async throws {
+        let testUserId = UUID()
+        let groupRepository = InMemoryGroupRepository()
+        let memberRepository = InMemoryMemberRepository()
+        let service = GroupService(groupRepository: groupRepository, memberRepository: memberRepository)
+
         let draft = GroupDraft(
-            name: "  Family Home  ",
-            icon: "  house.fill  ",
-            initialMembers: [GroupMemberInput(userId: invitee, role: .editor)]
+            name: "  My Family  ",
+            icon: "  house.fill  "
         )
-        let repository = InMemoryGroupRepository()
-        let service = GroupService(groupRepository: repository)
 
-        let group = try await service.createGroup(draft: draft, ownerId: ownerId)
-        let stored = try await repository.fetchGroup(id: group.id)
+        let group = try await service.createGroup(draft: draft, createdBy: testUserId)
+        let stored = try await groupRepository.fetchGroup(id: group.id)
 
-        XCTAssertEqual(stored?.name, "Family Home")
+        XCTAssertEqual(stored?.name, "My Family")
         XCTAssertEqual(stored?.icon, "house.fill")
-        XCTAssertEqual(stored?.members.count, 2)
-        XCTAssertEqual(stored?.members.first(where: { $0.userId == ownerId })?.role, .admin)
-        XCTAssertEqual(stored?.members.first(where: { $0.userId == invitee })?.role, .editor)
+        XCTAssertEqual(stored?.members.count, 0)
+        XCTAssertEqual(stored?.createdBy, testUserId)
     }
 
-    func testAddMemberRequiresAdminRole() async throws {
-        let adminId = UUID()
-        let editorId = UUID()
+    func testCreateGroupRejectsEmptyName() async throws {
+        let testUserId = UUID()
+        let groupRepository = InMemoryGroupRepository()
+        let memberRepository = InMemoryMemberRepository()
+        let service = GroupService(groupRepository: groupRepository, memberRepository: memberRepository)
+
+        let draft = GroupDraft(name: "   ", icon: nil)
+
+        do {
+            _ = try await service.createGroup(draft: draft, createdBy: testUserId)
+            XCTFail("Expected validation error")
+        } catch let error as KajimiruError {
+            if case let .validationFailed(reason) = error {
+                XCTAssertEqual(reason, "Group name must not be empty.")
+            } else {
+                XCTFail("Unexpected error: \(error)")
+            }
+        }
+    }
+
+    func testUpdateGroupMetadata() async throws {
+        let testUserId = UUID()
         let group = Group(
-            name: "Office",
-            members: [
-                GroupMembership(userId: adminId, role: .admin),
-                GroupMembership(userId: editorId, role: .editor)
-            ]
+            name: "Original Name",
+            icon: "old.icon",
+            members: [],
+            createdBy: testUserId,
+            updatedBy: testUserId
         )
-        let repository = InMemoryGroupRepository(groups: [group])
-        let service = GroupService(groupRepository: repository)
+        let groupRepository = InMemoryGroupRepository(groups: [group])
+        let memberRepository = InMemoryMemberRepository()
+        let service = GroupService(groupRepository: groupRepository, memberRepository: memberRepository)
+
+        let updated = try await service.updateGroup(
+            groupId: group.id,
+            name: "  New Name  ",
+            icon: .some(nil),
+            updatedBy: testUserId
+        )
+
+        XCTAssertEqual(updated.name, "New Name")
+        XCTAssertNil(updated.icon)
+        XCTAssertEqual(updated.updatedBy, testUserId)
+        XCTAssertGreaterThan(updated.updatedAt, group.updatedAt)
+    }
+
+    func testAddMemberToGroup() async throws {
+        let testUserId = UUID()
+        let group = Group(
+            name: "Test Group",
+            members: [],
+            createdBy: testUserId,
+            updatedBy: testUserId
+        )
+        let groupRepository = InMemoryGroupRepository(groups: [group])
+        let memberRepository = InMemoryMemberRepository()
+        let service = GroupService(groupRepository: groupRepository, memberRepository: memberRepository)
+
+        let memberDraft = MemberDraft(
+            displayName: "  John Doe  ",
+            userId: UUID()
+        )
+
+        let member = try await service.addMember(
+            groupId: group.id,
+            draft: memberDraft,
+            createdBy: testUserId
+        )
+
+        XCTAssertEqual(member.displayName, "John Doe")
+        XCTAssertEqual(member.groupId, group.id)
+        XCTAssertEqual(member.role, .member)
+        XCTAssertEqual(member.createdBy, testUserId)
+
+        // Verify group's member list was updated
+        let updatedGroup = try await groupRepository.fetchGroup(id: group.id)
+        XCTAssertEqual(updatedGroup?.members.count, 1)
+        XCTAssertEqual(updatedGroup?.members.first?.id, member.id)
+
+        // Verify member can be listed
+        let members = try await service.listMembers(in: group.id)
+        XCTAssertEqual(members.count, 1)
+        XCTAssertEqual(members.first?.id, member.id)
+    }
+
+    func testAddMemberRejectsEmptyDisplayName() async throws {
+        let testUserId = UUID()
+        let group = Group(
+            name: "Test Group",
+            members: [],
+            createdBy: testUserId,
+            updatedBy: testUserId
+        )
+        let groupRepository = InMemoryGroupRepository(groups: [group])
+        let memberRepository = InMemoryMemberRepository()
+        let service = GroupService(groupRepository: groupRepository, memberRepository: memberRepository)
+
+        let memberDraft = MemberDraft(displayName: "   ", userId: nil)
 
         do {
             _ = try await service.addMember(
                 groupId: group.id,
-                actorId: editorId,
-                member: GroupMemberInput(userId: UUID(), role: .viewer)
-            )
-            XCTFail("Expected unauthorized error")
-        } catch let error as KajimiruError {
-            XCTAssertEqual(error, .unauthorized)
-        }
-
-        let newUserId = UUID()
-        let updated = try await service.addMember(
-            groupId: group.id,
-            actorId: adminId,
-            member: GroupMemberInput(userId: newUserId, role: .viewer)
-        )
-        XCTAssertEqual(updated.members.count, 3)
-        XCTAssertTrue(updated.members.contains(where: { $0.userId == newUserId && $0.role == .viewer }))
-    }
-
-    func testUpdateMemberRoleMaintainsAdminPresence() async throws {
-        let ownerId = UUID()
-        let group = Group(
-            name: "Studio",
-            members: [GroupMembership(userId: ownerId, role: .admin)]
-        )
-        let repository = InMemoryGroupRepository(groups: [group])
-        let service = GroupService(groupRepository: repository)
-
-        do {
-            _ = try await service.updateMemberRole(
-                groupId: group.id,
-                actorId: ownerId,
-                memberId: ownerId,
-                role: .editor
+                draft: memberDraft,
+                createdBy: testUserId
             )
             XCTFail("Expected validation error")
         } catch let error as KajimiruError {
             if case let .validationFailed(reason) = error {
-                XCTAssertEqual(reason, "Group must contain at least one admin.")
+                XCTAssertEqual(reason, "Member display name must not be empty.")
             } else {
                 XCTFail("Unexpected error: \(error)")
             }
         }
-
-        let secondAdmin = UUID()
-        _ = try await service.addMember(
-            groupId: group.id,
-            actorId: ownerId,
-            member: GroupMemberInput(userId: secondAdmin, role: .admin)
-        )
-
-        let updated = try await service.updateMemberRole(
-            groupId: group.id,
-            actorId: ownerId,
-            memberId: ownerId,
-            role: .editor
-        )
-        XCTAssertEqual(updated.members.first(where: { $0.userId == ownerId })?.role, .editor)
     }
 
-    func testRemoveMemberPreventsRemovingLastAdmin() async throws {
-        let adminId = UUID()
-        let viewerId = UUID()
-        let group = Group(
-            name: "Household",
-            members: [
-                GroupMembership(userId: adminId, role: .admin),
-                GroupMembership(userId: viewerId, role: .viewer)
-            ]
+    func testUpdateMemberDisplayName() async throws {
+        let testUserId = UUID()
+        let member = Member(
+            displayName: "Original Name",
+            groupId: UUID(),
+            role: .member,
+            createdBy: testUserId,
+            updatedBy: testUserId
         )
-        let repository = InMemoryGroupRepository(groups: [group])
-        let service = GroupService(groupRepository: repository)
+        let groupRepository = InMemoryGroupRepository()
+        let memberRepository = InMemoryMemberRepository(members: [member])
+        let service = GroupService(groupRepository: groupRepository, memberRepository: memberRepository)
 
-        do {
-            _ = try await service.removeMember(groupId: group.id, actorId: adminId, memberId: adminId)
-            XCTFail("Expected validation error")
-        } catch let error as KajimiruError {
-            if case let .validationFailed(reason) = error {
-                XCTAssertEqual(reason, "Group must contain at least one admin.")
-            } else {
-                XCTFail("Unexpected error: \(error)")
-            }
-        }
-
-        let secondAdmin = UUID()
-        _ = try await service.addMember(
-            groupId: group.id,
-            actorId: adminId,
-            member: GroupMemberInput(userId: secondAdmin, role: .admin)
+        let updated = try await service.updateMember(
+            memberId: member.id,
+            displayName: "New Name",
+            updatedBy: testUserId
         )
 
-        let updated = try await service.removeMember(groupId: group.id, actorId: adminId, memberId: adminId)
-        XCTAssertEqual(updated.members.count, 2)
-        XCTAssertFalse(updated.members.contains(where: { $0.userId == adminId }))
+        XCTAssertEqual(updated.displayName, "New Name")
+        XCTAssertEqual(updated.updatedBy, testUserId)
+        XCTAssertGreaterThan(updated.updatedAt, member.updatedAt)
     }
 
-    func testMemberCanLeaveGroupIfNotLastAdmin() async throws {
-        let adminId = UUID()
-        let editorId = UUID()
+    func testDeleteMemberSoftDeletes() async throws {
+        let testUserId = UUID()
         let group = Group(
-            name: "Shared",
-            members: [
-                GroupMembership(userId: adminId, role: .admin),
-                GroupMembership(userId: editorId, role: .editor)
-            ]
+            name: "Test Group",
+            members: [],
+            createdBy: testUserId,
+            updatedBy: testUserId
         )
-        let repository = InMemoryGroupRepository(groups: [group])
-        let service = GroupService(groupRepository: repository)
+        let member = Member(
+            displayName: "John Doe",
+            groupId: group.id,
+            role: .member,
+            createdBy: testUserId,
+            updatedBy: testUserId
+        )
 
-        let updated = try await service.removeMember(groupId: group.id, actorId: editorId, memberId: editorId)
-        XCTAssertEqual(updated.members.count, 1)
-        XCTAssertFalse(updated.members.contains(where: { $0.userId == editorId }))
+        let groupRepository = InMemoryGroupRepository(groups: [group])
+        let memberRepository = InMemoryMemberRepository(members: [member])
+        let service = GroupService(groupRepository: groupRepository, memberRepository: memberRepository)
 
-        do {
-            _ = try await service.removeMember(groupId: updated.id, actorId: adminId, memberId: adminId)
-            XCTFail("Expected validation error")
-        } catch let error as KajimiruError {
-            if case let .validationFailed(reason) = error {
-                XCTAssertEqual(reason, "Group must contain at least one admin.")
-            } else {
-                XCTFail("Unexpected error: \(error)")
-            }
-        }
+        // Add member to group's member list
+        var updatedGroup = group
+        updatedGroup = updatedGroup.updating(members: [member], updatedBy: testUserId)
+        try await groupRepository.save(updatedGroup)
+
+        try await service.deleteMember(
+            groupId: group.id,
+            memberId: member.id,
+            deletedBy: testUserId
+        )
+
+        let storedMember = try await memberRepository.fetchMember(id: member.id)
+        XCTAssertNotNil(storedMember?.deletedAt)
+        XCTAssertEqual(storedMember?.deletedBy, testUserId)
+
+        // Verify group's member list was updated with soft-deleted member
+        let groupAfterDelete = try await groupRepository.fetchGroup(id: group.id)
+        XCTAssertEqual(groupAfterDelete?.members.count, 1)
+        XCTAssertNotNil(groupAfterDelete?.members.first?.deletedAt)
+
+        // Verify member is excluded from list when not including deleted
+        let activeMembers = try await service.listMembers(in: group.id, includeDeleted: false)
+        XCTAssertEqual(activeMembers.count, 0)
+
+        // Verify member is included when including deleted
+        let allMembers = try await service.listMembers(in: group.id, includeDeleted: true)
+        XCTAssertEqual(allMembers.count, 1)
     }
 }

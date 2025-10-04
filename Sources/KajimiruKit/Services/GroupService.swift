@@ -86,6 +86,8 @@ public final class GroupService: Sendable {
             userId: draft.userId,
             displayName: displayName,
             avatarURL: draft.avatarURL,
+            groupId: groupId,
+            role: .member,
             createdBy: createdBy,
             updatedBy: createdBy
         )

@@ -8,6 +8,10 @@
 
 /* Begin PBXBuildFile section */
 		02E69232A956DC74CF9CBE28 /* KajimiruKit in Frameworks */ = {isa = PBXBuildFile; productRef = 03AC504BBB0D42F933B5077C /* KajimiruKit */; };
+		F9CECE242E900C0900B80603 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = F9CECE232E900C0900B80603 /* FirebaseAuth */; };
+		F9CECE262E900C0900B80603 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = F9CECE252E900C0900B80603 /* FirebaseFirestore */; };
+		F9CECE292E900C3100B80603 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = F9CECE282E900C3100B80603 /* GoogleSignIn */; };
+		F9CECE2B2E900C3100B80603 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = F9CECE2A2E900C3100B80603 /* GoogleSignInSwift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -33,9 +37,22 @@
 		F94A617D2E7B0C3600DB2DD4 /* kajimiruUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = kajimiruUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		F9FE0CE22E900E7900777DDB /* Exceptions for "kajimiru" folder in "kajimiru" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = F94A61632E7B0C3500DB2DD4 /* kajimiru */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		F94A61662E7B0C3500DB2DD4 /* kajimiru */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				F9FE0CE22E900E7900777DDB /* Exceptions for "kajimiru" folder in "kajimiru" target */,
+			);
 			path = kajimiru;
 			sourceTree = "<group>";
 		};
@@ -56,7 +73,11 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F9CECE2B2E900C3100B80603 /* GoogleSignInSwift in Frameworks */,
 				02E69232A956DC74CF9CBE28 /* KajimiruKit in Frameworks */,
+				F9CECE292E900C3100B80603 /* GoogleSignIn in Frameworks */,
+				F9CECE242E900C0900B80603 /* FirebaseAuth in Frameworks */,
+				F9CECE262E900C0900B80603 /* FirebaseFirestore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -118,6 +139,10 @@
 			name = kajimiru;
 			packageProductDependencies = (
 				03AC504BBB0D42F933B5077C /* KajimiruKit */,
+				F9CECE232E900C0900B80603 /* FirebaseAuth */,
+				F9CECE252E900C0900B80603 /* FirebaseFirestore */,
+				F9CECE282E900C3100B80603 /* GoogleSignIn */,
+				F9CECE2A2E900C3100B80603 /* GoogleSignInSwift */,
 			);
 			productName = kajimiru;
 			productReference = F94A61642E7B0C3500DB2DD4 /* kajimiru.app */;
@@ -203,6 +228,8 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				33579B7A79B2DC848EEB1572 /* XCLocalSwiftPackageReference "." */,
+				F9CECE222E900C0900B80603 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				F9CECE272E900C3100B80603 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = F94A61652E7B0C3500DB2DD4 /* Products */;
@@ -409,6 +436,7 @@
 				DEVELOPMENT_TEAM = 4N67SXDXXM;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = kajimiru/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -437,6 +465,7 @@
 				DEVELOPMENT_TEAM = 4N67SXDXXM;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = kajimiru/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -575,11 +604,50 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		F9CECE222E900C0900B80603 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.3.0;
+			};
+		};
+		F9CECE272E900C3100B80603 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 9.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		03AC504BBB0D42F933B5077C /* KajimiruKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 33579B7A79B2DC848EEB1572 /* XCLocalSwiftPackageReference "." */;
 			productName = KajimiruKit;
+		};
+		F9CECE232E900C0900B80603 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F9CECE222E900C0900B80603 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		F9CECE252E900C0900B80603 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F9CECE222E900C0900B80603 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		F9CECE282E900C3100B80603 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F9CECE272E900C3100B80603 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
+		F9CECE2A2E900C3100B80603 /* GoogleSignInSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F9CECE272E900C3100B80603 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignInSwift;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

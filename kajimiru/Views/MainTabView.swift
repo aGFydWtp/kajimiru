@@ -2,7 +2,8 @@ import SwiftUI
 import KajimiruKit
 
 struct MainTabView: View {
-    @StateObject private var appState = AppState()
+    @EnvironmentObject var appState: AppState
+    @EnvironmentObject var authService: AuthenticationService
 
     var body: some View {
         TabView {
@@ -33,10 +34,6 @@ struct MainTabView: View {
             .tabItem {
                 Label("設定", systemImage: "gearshape.fill")
             }
-        }
-        .environmentObject(appState)
-        .task {
-            await appState.loadMVPData()
         }
     }
 }

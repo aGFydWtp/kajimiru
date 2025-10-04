@@ -3,11 +3,23 @@ import XCTest
 
 final class ChoreLogServiceTests: XCTestCase {
     func testRecordChorePersistsLog() async throws {
+        let testUserId = UUID()
         let adminId = UUID()
         let performerId = adminId
         let group = Group(
             name: "Home",
-            members: [GroupMembership(userId: adminId, role: .admin)]
+            members: [
+                Member(
+                    userId: adminId,
+                    displayName: "Admin User",
+                    groupId: UUID(),
+                    role: .admin,
+                    createdBy: testUserId,
+                    updatedBy: testUserId
+                )
+            ],
+            createdBy: testUserId,
+            updatedBy: testUserId
         )
         let groupRepository = InMemoryGroupRepository(groups: [group])
         let choreRepository = InMemoryChoreRepository()
@@ -18,7 +30,13 @@ final class ChoreLogServiceTests: XCTestCase {
             groupRepository: groupRepository
         )
 
-        let chore = Chore(groupId: group.id, title: "Dishes", weight: 3)
+        let chore = Chore(
+            groupId: group.id,
+            title: "Dishes",
+            weight: 3,
+            createdBy: testUserId,
+            updatedBy: testUserId
+        )
         try await choreRepository.save(chore)
 
         let timestamp = Date().addingTimeInterval(-3600)
@@ -43,11 +61,23 @@ final class ChoreLogServiceTests: XCTestCase {
     }
 
     func testUpdateLogUpdatesFields() async throws {
+        let testUserId = UUID()
         let adminId = UUID()
         let newPerformer = UUID()
         let group = Group(
             name: "Home",
-            members: [GroupMembership(userId: adminId, role: .admin)]
+            members: [
+                Member(
+                    userId: adminId,
+                    displayName: "Admin User",
+                    groupId: UUID(),
+                    role: .admin,
+                    createdBy: testUserId,
+                    updatedBy: testUserId
+                )
+            ],
+            createdBy: testUserId,
+            updatedBy: testUserId
         )
         let groupRepository = InMemoryGroupRepository(groups: [group])
         let choreRepository = InMemoryChoreRepository()
@@ -58,7 +88,13 @@ final class ChoreLogServiceTests: XCTestCase {
             groupRepository: groupRepository
         )
 
-        let chore = Chore(groupId: group.id, title: "Vacuum", weight: 2)
+        let chore = Chore(
+            groupId: group.id,
+            title: "Vacuum",
+            weight: 2,
+            createdBy: testUserId,
+            updatedBy: testUserId
+        )
         try await choreRepository.save(chore)
 
         let initialLogs = try await service.recordChore(
@@ -84,10 +120,22 @@ final class ChoreLogServiceTests: XCTestCase {
     }
 
     func testRecordChoreRejectsFarFutureDate() async throws {
+        let testUserId = UUID()
         let adminId = UUID()
         let group = Group(
             name: "Home",
-            members: [GroupMembership(userId: adminId, role: .admin)]
+            members: [
+                Member(
+                    userId: adminId,
+                    displayName: "Admin User",
+                    groupId: UUID(),
+                    role: .admin,
+                    createdBy: testUserId,
+                    updatedBy: testUserId
+                )
+            ],
+            createdBy: testUserId,
+            updatedBy: testUserId
         )
         let groupRepository = InMemoryGroupRepository(groups: [group])
         let choreRepository = InMemoryChoreRepository()
@@ -98,7 +146,13 @@ final class ChoreLogServiceTests: XCTestCase {
             groupRepository: groupRepository
         )
 
-        let chore = Chore(groupId: group.id, title: "Windows", weight: 5)
+        let chore = Chore(
+            groupId: group.id,
+            title: "Windows",
+            weight: 5,
+            createdBy: testUserId,
+            updatedBy: testUserId
+        )
         try await choreRepository.save(chore)
 
         let futureDate = Date().addingTimeInterval(60 * 60 * 26)
@@ -122,12 +176,24 @@ final class ChoreLogServiceTests: XCTestCase {
     }
 
     func testRecordChoreWithMultiplePerformers() async throws {
+        let testUserId = UUID()
         let adminId = UUID()
         let performer1 = UUID()
         let performer2 = UUID()
         let group = Group(
             name: "Home",
-            members: [GroupMembership(userId: adminId, role: .admin)]
+            members: [
+                Member(
+                    userId: adminId,
+                    displayName: "Admin User",
+                    groupId: UUID(),
+                    role: .admin,
+                    createdBy: testUserId,
+                    updatedBy: testUserId
+                )
+            ],
+            createdBy: testUserId,
+            updatedBy: testUserId
         )
         let groupRepository = InMemoryGroupRepository(groups: [group])
         let choreRepository = InMemoryChoreRepository()
@@ -138,7 +204,13 @@ final class ChoreLogServiceTests: XCTestCase {
             groupRepository: groupRepository
         )
 
-        let chore = Chore(groupId: group.id, title: "Cleaning", weight: 3)
+        let chore = Chore(
+            groupId: group.id,
+            title: "Cleaning",
+            weight: 3,
+            createdBy: testUserId,
+            updatedBy: testUserId
+        )
         try await choreRepository.save(chore)
 
         let draft = ChoreLogDraft(
