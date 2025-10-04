@@ -20,6 +20,34 @@ class AppState: ObservableObject {
     // Repository selection based on environment
     private let useMockData: Bool
 
+    // MARK: - Persistence
+    
+    private enum StorageKeys {
+        static let lastSelectedGroupId = "lastSelectedGroupId"
+        static let hasCompletedOnboarding = "hasCompletedOnboarding"
+    }
+    
+    private var lastSelectedGroupId: UUID? {
+        get {
+            guard let string = UserDefaults.standard.string(forKey: StorageKeys.lastSelectedGroupId) else {
+                return nil
+            }
+            return UUID(uuidString: string)
+        }
+        set {
+            UserDefaults.standard.set(newValue?.uuidString, forKey: StorageKeys.lastSelectedGroupId)
+        }
+    }
+    
+    private var hasCompletedOnboardingPersisted: Bool {
+        get {
+            UserDefaults.standard.bool(forKey: StorageKeys.hasCompletedOnboarding)
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: StorageKeys.hasCompletedOnboarding)
+        }
+    }
+
     var currentUserId: UUID {
         // Use authenticated user ID if available, otherwise use mock ID
         if let userID = authService?.userID, let uuid = UUID(uuidString: userID) {
@@ -84,11 +112,20 @@ class AppState: ObservableObject {
         }
     }()
 
+    private lazy var inviteRepo: any GroupInviteRepository = {
+        if useMockData {
+            return InMemoryGroupInviteRepository()
+        } else {
+            return FirestoreGroupInviteRepository()
+        }
+    }()
+
     // MARK: - Services
 
     private lazy var groupService = GroupService(
         groupRepository: groupRepo,
-        memberRepository: memberRepo
+        memberRepository: memberRepo,
+        inviteRepository: inviteRepo
     )
 
     private lazy var choreService = ChoreService(
@@ -109,10 +146,12 @@ class AppState: ObservableObject {
     /// Check if the current user exists and has a group
     func checkUserStatus() async {
         guard let authUID = authService?.userID else {
+            print("🔍 checkUserStatus: No auth UID")
             hasCompletedSetup = false
             return
         }
 
+        print("🔍 checkUserStatus: Starting for UID: \(authUID)")
         isLoading = true
         errorMessage = nil
 
@@ -124,17 +163,23 @@ class AppState: ObservableObject {
 
                 if let user = user {
                     currentUser = user
+                    print("🔍 checkUserStatus: User found: \(user.id)")
 
                     // Get all groups the user belongs to
                     let groupIds = try await firestoreMemberRepo.listGroupsForUser(firebaseUid: authUID)
+                    print("🔍 checkUserStatus: Found \(groupIds.count) groups")
 
                     if groupIds.isEmpty {
                         // No groups found - show initial setup
+                        print("🔍 checkUserStatus: No groups - showing initial setup")
                         hasCompletedSetup = false
                         needsGroupSelection = false
                     } else if groupIds.count == 1 {
                         // Only one group - auto-select it
-                        await loadUserGroup(groupId: groupIds[0])
+                        print("🔍 checkUserStatus: Single group - auto-loading: \(groupIds[0])")
+                        try await loadUserGroup(groupId: groupIds[0])
+                        lastSelectedGroupId = groupIds[0]
+                        hasCompletedOnboardingPersisted = true
 
                         // Update user's currentGroupId if needed
                         if user.currentGroupId != groupIds[0] {
@@ -146,13 +191,24 @@ class AppState: ObservableObject {
 
                         hasCompletedSetup = true
                         needsGroupSelection = false
+                        print("🔍 checkUserStatus: ✅ Setup complete - should show MainTabView")
                     } else {
                         // Multiple groups - show group selection
                         availableGroups = try await fetchGroups(ids: groupIds)
 
-                        // If user has a currentGroupId and it's in the list, auto-load it
-                        if let currentGroupId = user.currentGroupId, groupIds.contains(currentGroupId) {
-                            await loadUserGroup(groupId: currentGroupId)
+                        // Try to restore last selected group from UserDefaults
+                        let groupIdToLoad: UUID?
+                        if let lastGroupId = lastSelectedGroupId, groupIds.contains(lastGroupId) {
+                            groupIdToLoad = lastGroupId
+                        } else if let currentGroupId = user.currentGroupId, groupIds.contains(currentGroupId) {
+                            groupIdToLoad = currentGroupId
+                        } else {
+                            groupIdToLoad = nil
+                        }
+
+                        if let groupIdToLoad = groupIdToLoad {
+                            try await loadUserGroup(groupId: groupIdToLoad)
+                            lastSelectedGroupId = groupIdToLoad
                             hasCompletedSetup = true
                             needsGroupSelection = false
                         } else {
@@ -161,13 +217,16 @@ class AppState: ObservableObject {
                         }
                     }
                 } else {
-                    // User doesn't exist in Firestore yet
-                    hasCompletedSetup = false
+                    // User doesn't exist in Firestore yet - check if onboarding was completed
+                    print("🔍 checkUserStatus: No user in Firestore - hasCompletedOnboarding: \(hasCompletedOnboardingPersisted)")
+                    hasCompletedSetup = hasCompletedOnboardingPersisted
                     needsGroupSelection = false
                 }
             }
+            print("🔍 checkUserStatus: Completed - hasCompletedSetup: \(hasCompletedSetup), needsGroupSelection: \(needsGroupSelection)")
             isLoading = false
         } catch {
+            print("🔍 checkUserStatus: ❌ Error: \(error.localizedDescription)")
             errorMessage = error.localizedDescription
             isLoading = false
             hasCompletedSetup = false
@@ -187,17 +246,15 @@ class AppState: ObservableObject {
     }
 
     /// Load user's group data
-    private func loadUserGroup(groupId: UUID) async {
-        do {
-            group = try await groupRepo.fetchGroup(id: groupId)
-            if let group = group {
-                members = try await memberRepo.listMembers(in: group.id, includeDeleted: false)
-                chores = try await choreRepo.listChores(in: group.id, includeDeleted: false)
-                choreLogs = try await choreLogRepo.listLogs(in: group.id, since: nil)
-            }
-        } catch {
-            print("❌ Error loading group: \(error.localizedDescription)")
-            errorMessage = error.localizedDescription
+    private func loadUserGroup(groupId: UUID) async throws {
+        group = try await groupRepo.fetchGroup(id: groupId)
+        if let group = group {
+            members = try await memberRepo.listMembers(in: group.id, includeDeleted: false)
+            chores = try await choreRepo.listChores(in: group.id, includeDeleted: false)
+            choreLogs = try await choreLogRepo.listLogs(in: group.id, since: nil)
+            print("✅ Successfully loaded group: \(group.name)")
+        } else {
+            throw KajimiruError.notFound
         }
     }
 
@@ -215,13 +272,18 @@ class AppState: ObservableObject {
             currentUser = updatedUser
 
             // Load group data
-            await loadUserGroup(groupId: group.id)
+            try await loadUserGroup(groupId: group.id)
+
+            // Persist to UserDefaults
+            lastSelectedGroupId = group.id
+            hasCompletedOnboardingPersisted = true
 
             // Update state
             needsGroupSelection = false
             hasCompletedSetup = true
         } catch {
             errorMessage = error.localizedDescription
+            hasCompletedSetup = false
         }
 
         isLoading = false
@@ -306,6 +368,10 @@ class AppState: ObservableObject {
             self.chores = []
             self.choreLogs = []
             self.hasCompletedSetup = true
+
+            // 7. Persist to UserDefaults
+            lastSelectedGroupId = group.id
+            hasCompletedOnboardingPersisted = true
 
             isLoading = false
         } catch {
@@ -402,6 +468,119 @@ class AppState: ObservableObject {
     func memberDisplayName(for memberId: UUID) -> String {
         members.first { $0.id == memberId }?.displayName ?? "不明"
     }
+
+    // MARK: - Member Management
+
+    /// Add a new member to the current group
+    func addMember(displayName: String) async throws {
+        guard let group = group else {
+            throw AppStateError.groupRequired
+        }
+
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            let draft = MemberDraft(
+                displayName: displayName,
+                userId: nil,
+                avatarURL: nil
+            )
+            let member = try await groupService.addMember(
+                groupId: group.id,
+                draft: draft,
+                createdBy: currentUserId
+            )
+            members.append(member)
+            isLoading = false
+        } catch {
+            isLoading = false
+            errorMessage = error.localizedDescription
+            throw error
+        }
+    }
+
+    // MARK: - Invite Code Management
+
+    /// Generate an invite code for the current group
+    func generateInviteCode() async throws -> String {
+        guard let group = group else {
+            throw AppStateError.groupRequired
+        }
+
+        let invite = try await groupService.generateInviteCode(
+            for: group.id,
+            expiresInDays: 30,
+            maxUses: nil,
+            createdBy: currentUserId
+        )
+        return invite.code
+    }
+
+    /// Join a group using an invite code
+    func joinGroupWithInviteCode(code: String, yourName: String) async throws {
+        guard let authUID = authService?.userID,
+              let userEmail = authService?.userEmail else {
+            throw AppStateError.authenticationRequired
+        }
+
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            let userId = UUID()  // Generate new UUID for internal use
+
+            // Join the group via invite code
+            let group = try await groupService.joinGroupWithInviteCode(
+                code: code,
+                userId: userId,
+                firebaseUid: authUID,
+                displayName: yourName,
+                avatarURL: nil
+            )
+
+            // Check if user already exists
+            if let firestoreUserRepo = userRepo as? FirestoreUserRepository,
+               let existingUser = try await firestoreUserRepo.fetchUserByFirebaseUid(authUID) {
+                // Update existing user's current group
+                var updatedUser = existingUser
+                updatedUser.currentGroupId = group.id
+                try await userRepo.save(updatedUser)
+                currentUser = updatedUser
+            } else {
+                // Create new user
+                let user = User(
+                    id: userId,
+                    firebaseUid: authUID,
+                    displayName: yourName,
+                    email: userEmail,
+                    avatarURL: nil,
+                    currentGroupId: group.id,
+                    createdAt: Date(),
+                    updatedAt: Date()
+                )
+                try await userRepo.save(user)
+                currentUser = user
+            }
+
+            // Load group data
+            try await loadUserGroup(groupId: group.id)
+
+            // Persist to UserDefaults
+            lastSelectedGroupId = group.id
+            hasCompletedOnboardingPersisted = true
+
+            // Update state
+            hasCompletedSetup = true
+            needsGroupSelection = false
+            isLoading = false
+        } catch {
+            isLoading = false
+            errorMessage = error.localizedDescription
+            hasCompletedSetup = false
+            throw error
+        }
+    }
 }
 
 // MARK: - Errors
@@ -409,6 +588,7 @@ class AppState: ObservableObject {
 enum AppStateError: LocalizedError {
     case authenticationRequired
     case choreNotFound
+    case groupRequired
 
     var errorDescription: String? {
         switch self {
@@ -416,6 +596,8 @@ enum AppStateError: LocalizedError {
             return "認証が必要です"
         case .choreNotFound:
             return "家事が見つかりません"
+        case .groupRequired:
+            return "グループが選択されていません"
         }
     }
 }

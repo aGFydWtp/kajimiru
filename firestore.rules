@@ -116,6 +116,21 @@ service cloud.firestore {
         // Users can delete their own reminders, admins can delete any
         allow delete: if isAuthenticated() && isMemberOfGroup(groupId);
       }
+
+      // Group invites subcollection
+      match /invites/{inviteId} {
+        // Anyone authenticated can read active invites to validate invite codes
+        allow read: if isAuthenticated();
+
+        // Only admins can create invite codes for their group
+        allow create: if isAuthenticated() && isAdminOfGroup(groupId);
+
+        // Authenticated users can update invites when joining (increment use count)
+        allow update: if isAuthenticated();
+
+        // Only admins can delete invite codes
+        allow delete: if isAdminOfGroup(groupId);
+      }
     }
   }
 }

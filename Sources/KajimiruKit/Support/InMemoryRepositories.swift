@@ -134,4 +134,55 @@ public actor InMemoryMemberRepository: MemberRepository {
         members[id] = member
     }
 
+    /// List all groups that a user belongs to by their Firebase UID
+    public func listGroupsForUser(firebaseUid: String) async throws -> [UUID] {
+        var groupIds: [UUID] = []
+        
+        // Search through all members to find those with matching firebaseUid
+        for member in members.values {
+            if member.firebaseUid == firebaseUid && !member.isDeleted {
+                if !groupIds.contains(member.groupId) {
+                    groupIds.append(member.groupId)
+                }
+            }
+        }
+        
+        return groupIds
+    }
+}
+
+public actor InMemoryGroupInviteRepository: GroupInviteRepository {
+    private var invites: [UUID: GroupInvite] = [:]
+    private var codeIndex: [String: UUID] = [:] // code -> invite ID
+
+    public init(invites: [GroupInvite] = []) {
+        for invite in invites {
+            self.invites[invite.id] = invite
+            self.codeIndex[invite.code] = invite.id
+        }
+    }
+
+    public func fetchInvite(code: String) async throws -> GroupInvite? {
+        guard let inviteId = codeIndex[code] else { return nil }
+        return invites[inviteId]
+    }
+
+    public func listInvites(for groupId: UUID) async throws -> [GroupInvite] {
+        invites.values
+            .filter { $0.groupId == groupId }
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+
+    public func save(_ invite: GroupInvite) async throws {
+        invites[invite.id] = invite
+        codeIndex[invite.code] = invite.id
+    }
+
+    public func deleteInvite(id: UUID) async throws {
+        guard let invite = invites[id] else {
+            throw KajimiruError.notFound
+        }
+        invites.removeValue(forKey: id)
+        codeIndex.removeValue(forKey: invite.code)
+    }
 }

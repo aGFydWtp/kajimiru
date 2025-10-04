@@ -40,3 +40,11 @@ public protocol MemberRepository: Sendable {
     func save(_ member: Member) async throws
     func softDeleteMember(id: UUID, in groupId: UUID, deletedBy: UUID) async throws
 }
+
+/// Handles group invitation codes for joining groups.
+public protocol GroupInviteRepository: Sendable {
+    func fetchInvite(code: String) async throws -> GroupInvite?
+    func listInvites(for groupId: UUID) async throws -> [GroupInvite]
+    func save(_ invite: GroupInvite) async throws
+    func deleteInvite(id: UUID) async throws
+}

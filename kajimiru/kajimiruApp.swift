@@ -33,6 +33,8 @@ struct ContentView: View {
     @EnvironmentObject var appState: AppState
 
     var body: some View {
+        let _ = print("📱 ContentView: isAuth=\(authService.isAuthenticated), isLoading=\(appState.isLoading), needsGroupSelection=\(appState.needsGroupSelection), hasCompletedSetup=\(appState.hasCompletedSetup)")
+
         Group {
             if !authService.isAuthenticated {
                 SignInView()

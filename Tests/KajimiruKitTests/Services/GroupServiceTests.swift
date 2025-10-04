@@ -6,7 +6,8 @@ final class GroupServiceTests: XCTestCase {
         let testUserId = UUID()
         let groupRepository = InMemoryGroupRepository()
         let memberRepository = InMemoryMemberRepository()
-        let service = GroupService(groupRepository: groupRepository, memberRepository: memberRepository)
+        let inviteRepository = InMemoryGroupInviteRepository()
+        let service = GroupService(groupRepository: groupRepository, memberRepository: memberRepository, inviteRepository: inviteRepository)
 
         let draft = GroupDraft(
             name: "  My Family  ",
@@ -26,7 +27,8 @@ final class GroupServiceTests: XCTestCase {
         let testUserId = UUID()
         let groupRepository = InMemoryGroupRepository()
         let memberRepository = InMemoryMemberRepository()
-        let service = GroupService(groupRepository: groupRepository, memberRepository: memberRepository)
+        let inviteRepository = InMemoryGroupInviteRepository()
+        let service = GroupService(groupRepository: groupRepository, memberRepository: memberRepository, inviteRepository: inviteRepository)
 
         let draft = GroupDraft(name: "   ", icon: nil)
 
@@ -53,12 +55,13 @@ final class GroupServiceTests: XCTestCase {
         )
         let groupRepository = InMemoryGroupRepository(groups: [group])
         let memberRepository = InMemoryMemberRepository()
-        let service = GroupService(groupRepository: groupRepository, memberRepository: memberRepository)
+        let inviteRepository = InMemoryGroupInviteRepository()
+        let service = GroupService(groupRepository: groupRepository, memberRepository: memberRepository, inviteRepository: inviteRepository)
 
         let updated = try await service.updateGroup(
             groupId: group.id,
             name: "  New Name  ",
-            icon: .some(nil),
+            icon: Optional<String?>.some(nil),
             updatedBy: testUserId
         )
 
@@ -78,7 +81,8 @@ final class GroupServiceTests: XCTestCase {
         )
         let groupRepository = InMemoryGroupRepository(groups: [group])
         let memberRepository = InMemoryMemberRepository()
-        let service = GroupService(groupRepository: groupRepository, memberRepository: memberRepository)
+        let inviteRepository = InMemoryGroupInviteRepository()
+        let service = GroupService(groupRepository: groupRepository, memberRepository: memberRepository, inviteRepository: inviteRepository)
 
         let memberDraft = MemberDraft(
             displayName: "  John Doe  ",
@@ -93,7 +97,7 @@ final class GroupServiceTests: XCTestCase {
 
         XCTAssertEqual(member.displayName, "John Doe")
         XCTAssertEqual(member.groupId, group.id)
-        XCTAssertEqual(member.role, .member)
+        XCTAssertEqual(member.role, MemberRole.member)
         XCTAssertEqual(member.createdBy, testUserId)
 
         // Verify group's member list was updated
@@ -117,7 +121,8 @@ final class GroupServiceTests: XCTestCase {
         )
         let groupRepository = InMemoryGroupRepository(groups: [group])
         let memberRepository = InMemoryMemberRepository()
-        let service = GroupService(groupRepository: groupRepository, memberRepository: memberRepository)
+        let inviteRepository = InMemoryGroupInviteRepository()
+        let service = GroupService(groupRepository: groupRepository, memberRepository: memberRepository, inviteRepository: inviteRepository)
 
         let memberDraft = MemberDraft(displayName: "   ", userId: nil)
 
@@ -148,7 +153,8 @@ final class GroupServiceTests: XCTestCase {
         )
         let groupRepository = InMemoryGroupRepository()
         let memberRepository = InMemoryMemberRepository(members: [member])
-        let service = GroupService(groupRepository: groupRepository, memberRepository: memberRepository)
+        let inviteRepository = InMemoryGroupInviteRepository()
+        let service = GroupService(groupRepository: groupRepository, memberRepository: memberRepository, inviteRepository: inviteRepository)
 
         let updated = try await service.updateMember(
             memberId: member.id,
@@ -179,7 +185,8 @@ final class GroupServiceTests: XCTestCase {
 
         let groupRepository = InMemoryGroupRepository(groups: [group])
         let memberRepository = InMemoryMemberRepository(members: [member])
-        let service = GroupService(groupRepository: groupRepository, memberRepository: memberRepository)
+        let inviteRepository = InMemoryGroupInviteRepository()
+        let service = GroupService(groupRepository: groupRepository, memberRepository: memberRepository, inviteRepository: inviteRepository)
 
         // Add member to group's member list
         var updatedGroup = group

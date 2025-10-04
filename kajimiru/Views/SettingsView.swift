@@ -5,6 +5,8 @@ struct SettingsView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var authService: AuthenticationService
     @State private var showingSignOutAlert = false
+    @State private var showingAddMember = false
+    @State private var showingInviteCode = false
 
     var body: some View {
         List {
@@ -31,6 +33,24 @@ struct SettingsView: View {
                         MemberRow(member: member)
                     }
                 }
+
+                Button {
+                    showingAddMember = true
+                } label: {
+                    Label("メンバーを追加", systemImage: "person.badge.plus.fill")
+                }
+            }
+
+            Section {
+                Button {
+                    showingInviteCode = true
+                } label: {
+                    Label("招待コードを表示", systemImage: "qrcode")
+                }
+            } header: {
+                Text("家族・ルームメイトを招待")
+            } footer: {
+                Text("招待コードを共有して、家族やルームメイトをグループに招待できます")
             }
 
             Section("アカウント") {
@@ -51,13 +71,14 @@ struct SettingsView: View {
                 }
             }
 
-            Section {
-                Text("MVP版では、メンバー管理機能は未実装です")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
         }
         .navigationTitle("設定")
+        .sheet(isPresented: $showingAddMember) {
+            AddMemberView()
+        }
+        .sheet(isPresented: $showingInviteCode) {
+            InviteCodeDisplayView()
+        }
         .alert("サインアウト", isPresented: $showingSignOutAlert) {
             Button("キャンセル", role: .cancel) { }
             Button("サインアウト", role: .destructive) {

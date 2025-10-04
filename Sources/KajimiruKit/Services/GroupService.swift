@@ -26,10 +26,16 @@ public struct MemberDraft: Sendable {
 public final class GroupService: Sendable {
     private let groupRepository: GroupRepository
     private let memberRepository: MemberRepository
+    private let inviteRepository: GroupInviteRepository
 
-    public init(groupRepository: GroupRepository, memberRepository: MemberRepository) {
+    public init(
+        groupRepository: GroupRepository,
+        memberRepository: MemberRepository,
+        inviteRepository: GroupInviteRepository
+    ) {
         self.groupRepository = groupRepository
         self.memberRepository = memberRepository
+        self.inviteRepository = inviteRepository
     }
 
     /// Creates a new group.
@@ -136,5 +142,113 @@ public final class GroupService: Sendable {
     /// Lists members in a group.
     public func listMembers(in groupId: UUID, includeDeleted: Bool = false) async throws -> [Member] {
         try await memberRepository.listMembers(in: groupId, includeDeleted: includeDeleted)
+    }
+
+    // MARK: - Invite Code Management
+
+    /// Generates a new invite code for a group
+    public func generateInviteCode(
+        for groupId: UUID,
+        expiresInDays: Int = 30,
+        maxUses: Int? = nil,
+        createdBy: UUID
+    ) async throws -> GroupInvite {
+        // Verify group exists
+        guard try await groupRepository.fetchGroup(id: groupId) != nil else {
+            throw KajimiruError.notFound
+        }
+
+        // Generate unique code
+        var code = GroupInvite.generateCode()
+        var attempts = 0
+        while try await inviteRepository.fetchInvite(code: code) != nil {
+            code = GroupInvite.generateCode()
+            attempts += 1
+            if attempts > 10 {
+                throw KajimiruError.validationFailed(reason: "Failed to generate unique invite code")
+            }
+        }
+
+        let expiresAt = Calendar.current.date(byAdding: .day, value: expiresInDays, to: Date())
+
+        let invite = GroupInvite(
+            groupId: groupId,
+            code: code,
+            expiresAt: expiresAt,
+            maxUses: maxUses,
+            createdBy: createdBy
+        )
+
+        try await inviteRepository.save(invite)
+        return invite
+    }
+
+    /// Validates an invite code and adds the user to the group
+    public func joinGroupWithInviteCode(
+        code: String,
+        userId: UUID,
+        firebaseUid: String,
+        displayName: String,
+        avatarURL: URL? = nil
+    ) async throws -> Group {
+        // Fetch and validate invite
+        guard let invite = try await inviteRepository.fetchInvite(code: code) else {
+            throw KajimiruError.validationFailed(reason: "招待コードが見つかりません")
+        }
+
+        guard invite.isValid else {
+            throw KajimiruError.validationFailed(reason: "招待コードが無効です（期限切れまたは使用済み）")
+        }
+
+        // Fetch group
+        guard let group = try await groupRepository.fetchGroup(id: invite.groupId) else {
+            throw KajimiruError.notFound
+        }
+
+        // Check if user is already a member
+        let existingMembers = try await memberRepository.listMembers(in: group.id, includeDeleted: false)
+        if existingMembers.contains(where: { $0.firebaseUid == firebaseUid }) {
+            throw KajimiruError.validationFailed(reason: "既にこのグループのメンバーです")
+        }
+
+        // Create member
+        let member = Member(
+            id: userId,
+            userId: userId,
+            firebaseUid: firebaseUid,
+            displayName: displayName,
+            avatarURL: avatarURL,
+            groupId: group.id,
+            role: .member,
+            createdBy: userId,
+            updatedBy: userId
+        )
+        try await memberRepository.save(member)
+
+        // Update group's member list
+        var updatedGroup = group
+        updatedGroup = updatedGroup.updating(members: group.members + [member], updatedBy: userId)
+        try await groupRepository.save(updatedGroup)
+
+        // Increment invite use count
+        let updatedInvite = invite.incrementUses()
+        try await inviteRepository.save(updatedInvite)
+
+        return updatedGroup
+    }
+
+    /// Lists all active invites for a group
+    public func listInvites(for groupId: UUID) async throws -> [GroupInvite] {
+        try await inviteRepository.listInvites(for: groupId)
+    }
+
+    /// Deactivates an invite code
+    public func deactivateInvite(id: UUID) async throws {
+        guard let invite = try await inviteRepository.listInvites(for: UUID()).first(where: { $0.id == id }) else {
+            throw KajimiruError.notFound
+        }
+
+        let deactivated = invite.deactivate()
+        try await inviteRepository.save(deactivated)
     }
 }
