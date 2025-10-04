@@ -39,6 +39,7 @@ public protocol MemberRepository: Sendable {
     func fetchMember(id: UUID) async throws -> Member?
     func save(_ member: Member) async throws
     func softDeleteMember(id: UUID, in groupId: UUID, deletedBy: UUID) async throws
+    func listGroupsForUser(firebaseUid: String) async throws -> [UUID]
 }
 
 /// Handles group invitation codes for joining groups.

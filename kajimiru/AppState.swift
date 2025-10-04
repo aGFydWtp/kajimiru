@@ -611,8 +611,7 @@ class AppState: ObservableObject {
 
     /// Load all groups the current user belongs to
     func loadAvailableGroups() async throws {
-        guard let authUID = authService?.userID,
-              let firestoreMemberRepo = memberRepo as? FirestoreMemberRepository else {
+        guard let authUID = authService?.userID else {
             throw AppStateError.authenticationRequired
         }
 
@@ -620,7 +619,7 @@ class AppState: ObservableObject {
         errorMessage = nil
 
         do {
-            let groupIds = try await firestoreMemberRepo.listGroupsForUser(firebaseUid: authUID)
+            let groupIds = try await memberRepo.listGroupsForUser(firebaseUid: authUID)
             availableGroups = try await fetchGroups(ids: groupIds)
             isLoading = false
         } catch {
