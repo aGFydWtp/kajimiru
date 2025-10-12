@@ -3,8 +3,8 @@ import XCTest
 
 final class ChoreLogServiceTests: XCTestCase {
     func testRecordChorePersistsLog() async throws {
-        let testUserId = UUID()
-        let adminId = UUID()
+        let testUserId = "test-user-id"
+        let adminId = "admin-user-id"
         let performerId = adminId
         let group = Group(
             name: "Home",
@@ -61,8 +61,8 @@ final class ChoreLogServiceTests: XCTestCase {
     }
 
     func testUpdateLogUpdatesFields() async throws {
-        let testUserId = UUID()
-        let adminId = UUID()
+        let testUserId = "test-user-id"
+        let adminId = "admin-user-id"
         let newPerformer = UUID()
         let group = Group(
             name: "Home",
@@ -120,8 +120,8 @@ final class ChoreLogServiceTests: XCTestCase {
     }
 
     func testRecordChoreRejectsFarFutureDate() async throws {
-        let testUserId = UUID()
-        let adminId = UUID()
+        let testUserId = "test-user-id"
+        let adminId = "admin-user-id"
         let group = Group(
             name: "Home",
             members: [
@@ -176,8 +176,8 @@ final class ChoreLogServiceTests: XCTestCase {
     }
 
     func testRecordChoreWithMultiplePerformers() async throws {
-        let testUserId = UUID()
-        let adminId = UUID()
+        let testUserId = "test-user-id"
+        let adminId = "admin-user-id"
         let performer1 = UUID()
         let performer2 = UUID()
         let group = Group(

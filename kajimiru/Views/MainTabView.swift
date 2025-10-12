@@ -131,5 +131,5 @@ struct RecordChoreSheet: View {
 }
 
 #Preview {
-    MainTabView()
+    MainTabView().environmentObject(AppState(useMockData: true))
 }

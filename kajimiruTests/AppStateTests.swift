@@ -11,13 +11,12 @@ final class AppStateTests: XCTestCase {
         // checkUserStatus() automatically loads that group and sets hasCompletedSetup to true
 
         // Setup: Create user, group, and member
-        let testUserId = UUID()
+//        let testUserId = UUID()
         let testFirebaseUid = "test-firebase-uid"
         let testGroupId = UUID()
 
         let user = User(
-            id: testUserId,
-            firebaseUid: testFirebaseUid,
+            id: testFirebaseUid,
             displayName: "Test User",
             email: "test@example.com",
             avatarURL: nil,
@@ -31,20 +30,20 @@ final class AppStateTests: XCTestCase {
             name: "Test Group",
             icon: "house.fill",
             members: [],
-            createdBy: testUserId,
-            updatedBy: testUserId
+            createdBy: testFirebaseUid,
+            updatedBy: testFirebaseUid
         )
 
+        let testMemberId = UUID()
         let member = Member(
-            id: testUserId,
-            userId: testUserId,
-            firebaseUid: testFirebaseUid,
+            id: testMemberId,
+            userId: testFirebaseUid,
             displayName: "Test User",
             avatarURL: nil,
             groupId: testGroupId,
             role: .admin,
-            createdBy: testUserId,
-            updatedBy: testUserId
+            createdBy: testFirebaseUid,
+            updatedBy: testFirebaseUid
         )
 
         // Create in-memory repositories with test data

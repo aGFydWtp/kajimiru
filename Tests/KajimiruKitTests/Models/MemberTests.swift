@@ -3,7 +3,7 @@ import XCTest
 
 final class MemberTests: XCTestCase {
     func testUpdatingDisplayName() {
-        let testUserId = UUID()
+        let testUserId = "test-user-id"
         let member = Member(
             displayName: "Original Name",
             groupId: UUID(),
@@ -26,11 +26,10 @@ final class MemberTests: XCTestCase {
         XCTAssertEqual(updated.groupId, member.groupId)
         XCTAssertEqual(updated.role, member.role)
         XCTAssertEqual(updated.userId, member.userId)
-        XCTAssertEqual(updated.firebaseUid, member.firebaseUid)
     }
 
     func testUpdatingAvatarURL() {
-        let testUserId = UUID()
+        let testUserId = "test-user-id"
         let member = Member(
             displayName: "Test User",
             avatarURL: nil,
@@ -50,11 +49,10 @@ final class MemberTests: XCTestCase {
         XCTAssertEqual(updated.displayName, member.displayName)
     }
 
-    func testUpdatingUserIdAndFirebaseUid() {
-        let testUserId = UUID()
+    func testUpdatingUserId() {
+        let testUserId = "test-user-id"
         let member = Member(
             userId: nil,
-            firebaseUid: nil,
             displayName: "Unlinked User",
             groupId: UUID(),
             role: .member,
@@ -62,18 +60,15 @@ final class MemberTests: XCTestCase {
             updatedBy: testUserId
         )
 
-        let newUserId = UUID()
-        let firebaseUid = "test-firebase-uid"
+        let newUserId = "new-firebase-uid"
 
         let linked = member.updating(
             userId: newUserId,
-            firebaseUid: firebaseUid,
             updatedBy: newUserId
         )
 
         // Verify linking fields are updated
         XCTAssertEqual(linked.userId, newUserId)
-        XCTAssertEqual(linked.firebaseUid, firebaseUid)
         XCTAssertEqual(linked.updatedBy, newUserId)
         XCTAssertGreaterThanOrEqual(linked.updatedAt, member.updatedAt)
 
@@ -90,7 +85,7 @@ final class MemberTests: XCTestCase {
     }
 
     func testSoftDeleting() {
-        let testUserId = UUID()
+        let testUserId = "test-user-id"
         let member = Member(
             displayName: "Test User",
             groupId: UUID(),
@@ -114,7 +109,7 @@ final class MemberTests: XCTestCase {
     }
 
     func testMemberIsDeletedProperty() {
-        let testUserId = UUID()
+        let testUserId = "test-user-id"
 
         // Test active member
         let activeMember = Member(
@@ -140,10 +135,9 @@ final class MemberTests: XCTestCase {
     }
 
     func testMemberCodable() throws {
-        let testUserId = UUID()
+        let testUserId = "test-user-id"
         let member = Member(
-            userId: UUID(),
-            firebaseUid: "test-firebase-uid",
+            userId: "firebase-uid-123",
             displayName: "Test User",
             avatarURL: URL(string: "https://example.com/avatar.jpg"),
             groupId: UUID(),
@@ -163,7 +157,6 @@ final class MemberTests: XCTestCase {
         // Verify all fields match
         XCTAssertEqual(decoded.id, member.id)
         XCTAssertEqual(decoded.userId, member.userId)
-        XCTAssertEqual(decoded.firebaseUid, member.firebaseUid)
         XCTAssertEqual(decoded.displayName, member.displayName)
         XCTAssertEqual(decoded.avatarURL, member.avatarURL)
         XCTAssertEqual(decoded.groupId, member.groupId)
@@ -173,10 +166,9 @@ final class MemberTests: XCTestCase {
     }
 
     func testMemberWithNullableFields() throws {
-        let testUserId = UUID()
+        let testUserId = "test-user-id"
         let member = Member(
             userId: nil,
-            firebaseUid: nil,
             displayName: "Unlinked User",
             avatarURL: nil,
             groupId: UUID(),
@@ -195,7 +187,6 @@ final class MemberTests: XCTestCase {
 
         // Verify nullable fields are nil
         XCTAssertNil(decoded.userId)
-        XCTAssertNil(decoded.firebaseUid)
         XCTAssertNil(decoded.avatarURL)
         XCTAssertNil(decoded.deletedAt)
         XCTAssertNil(decoded.deletedBy)

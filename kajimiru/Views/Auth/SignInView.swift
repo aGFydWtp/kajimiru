@@ -9,9 +9,16 @@ struct SignInView: View {
 
             // App logo and title
             VStack(spacing: 16) {
-                Image(systemName: "house.fill")
-                    .font(.system(size: 80))
-                    .foregroundStyle(.blue)
+                // カスタムロゴ画像を使う場合（Assets.xcassetsに"AppLogo"という名前で追加）
+                 Image("AppIcon-logo")
+                     .resizable()
+                     .scaledToFit()
+                     .frame(width: 200, height: 200)
+
+                // SF Symbolsを使う場合（現在）
+//                Image(systemName: "house.fill")
+//                    .font(.system(size: 80))
+//                    .foregroundStyle(.blue)
 
                 Text("Kajimiru")
                     .font(.largeTitle.weight(.bold))

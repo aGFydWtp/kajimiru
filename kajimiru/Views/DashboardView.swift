@@ -3,7 +3,7 @@ import KajimiruKit
 
 struct DashboardView: View {
     @EnvironmentObject var appState: AppState
-    @State private var weeklySnapshot: WorkloadSnapshot?
+    @State private var currentSnapshot: WorkloadSnapshot?
     @State private var selectedPeriod: Period = .weekly
     @State private var editingChore: Chore?
     @State private var choreToDelete: Chore?
@@ -132,7 +132,7 @@ struct DashboardView: View {
             .padding(.horizontal)
 
             // Workload snapshot
-            if let snapshot = weeklySnapshot, snapshot.totalCount > 0 {
+            if let snapshot = currentSnapshot, snapshot.totalCount > 0 {
                 workloadCard(snapshot: snapshot)
             } else {
                 emptyStateCard
@@ -206,7 +206,12 @@ struct DashboardView: View {
     }
 
     private func loadSnapshot() async {
-        weeklySnapshot = try? await appState.getWeeklySnapshot()
+        switch selectedPeriod {
+        case .weekly:
+            currentSnapshot = try? await appState.getWeeklySnapshot()
+        case .monthly:
+            currentSnapshot = try? await appState.getMonthlySnapshot()
+        }
     }
 
     private func percentageString(_ value: Double) -> String {

@@ -491,6 +491,19 @@ class AppState: ObservableObject {
         return snapshots.first
     }
 
+    func getMonthlySnapshot() async throws -> WorkloadSnapshot? {
+        guard group != nil else { return nil }
+
+        let now = Date()
+        let snapshots = analyticsService.monthlySnapshots(
+            logs: choreLogs,
+            endingOn: now,
+            monthCount: 1
+        )
+
+        return snapshots.first
+    }
+
     func memberDisplayName(for memberId: UUID) -> String {
         members.first { $0.id == memberId }?.displayName ?? "不明"
     }

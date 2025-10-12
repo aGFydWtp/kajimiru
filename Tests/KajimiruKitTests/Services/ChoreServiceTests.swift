@@ -3,8 +3,8 @@ import XCTest
 
 final class ChoreServiceTests: XCTestCase {
     func testCreateChorePersistsAndTrimsFields() async throws {
-        let testUserId = UUID()
-        let adminId = UUID()
+        let testUserId = "test-user-id"
+        let adminId = "admin-user-id"
         let group = Group(
             name: "Home",
             members: [
@@ -41,8 +41,8 @@ final class ChoreServiceTests: XCTestCase {
     }
 
     func testCreateChoreRejectsInvalidInput() async throws {
-        let testUserId = UUID()
-        let adminId = UUID()
+        let testUserId = "test-user-id"
+        let adminId = "admin-user-id"
         let group = Group(
             name: "Home",
             members: [
@@ -81,8 +81,8 @@ final class ChoreServiceTests: XCTestCase {
     }
 
     func testDeleteChoreSoftDeletes() async throws {
-        let testUserId = UUID()
-        let adminId = UUID()
+        let testUserId = "test-user-id"
+        let adminId = "admin-user-id"
         let group = Group(
             name: "Home",
             members: [

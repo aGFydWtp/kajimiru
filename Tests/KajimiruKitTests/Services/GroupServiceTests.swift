@@ -3,7 +3,7 @@ import XCTest
 
 final class GroupServiceTests: XCTestCase {
     func testCreateGroupTrimsNameAndIcon() async throws {
-        let testUserId = UUID()
+        let testUserId = "test-user-id"
         let groupRepository = InMemoryGroupRepository()
         let memberRepository = InMemoryMemberRepository()
         let inviteRepository = InMemoryGroupInviteRepository()
@@ -24,7 +24,7 @@ final class GroupServiceTests: XCTestCase {
     }
 
     func testCreateGroupRejectsEmptyName() async throws {
-        let testUserId = UUID()
+        let testUserId = "test-user-id"
         let groupRepository = InMemoryGroupRepository()
         let memberRepository = InMemoryMemberRepository()
         let inviteRepository = InMemoryGroupInviteRepository()
@@ -45,7 +45,7 @@ final class GroupServiceTests: XCTestCase {
     }
 
     func testUpdateGroupMetadata() async throws {
-        let testUserId = UUID()
+        let testUserId = "test-user-id"
         let group = Group(
             name: "Original Name",
             icon: "old.icon",
@@ -72,7 +72,7 @@ final class GroupServiceTests: XCTestCase {
     }
 
     func testAddMemberToGroup() async throws {
-        let testUserId = UUID()
+        let testUserId = "test-user-id"
         let group = Group(
             name: "Test Group",
             members: [],
@@ -112,7 +112,7 @@ final class GroupServiceTests: XCTestCase {
     }
 
     func testAddMemberRejectsEmptyDisplayName() async throws {
-        let testUserId = UUID()
+        let testUserId = "test-user-id"
         let group = Group(
             name: "Test Group",
             members: [],
@@ -143,7 +143,7 @@ final class GroupServiceTests: XCTestCase {
     }
 
     func testUpdateMemberDisplayName() async throws {
-        let testUserId = UUID()
+        let testUserId = "test-user-id"
         let member = Member(
             displayName: "Original Name",
             groupId: UUID(),
@@ -168,7 +168,7 @@ final class GroupServiceTests: XCTestCase {
     }
 
     func testDeleteMemberSoftDeletes() async throws {
-        let testUserId = UUID()
+        let testUserId = "test-user-id"
         let group = Group(
             name: "Test Group",
             members: [],
@@ -218,7 +218,7 @@ final class GroupServiceTests: XCTestCase {
     }
 
     func testLinkMemberToFirebaseAuth() async throws {
-        let testUserId = UUID()
+        let testUserId = "test-user-id"
         let newUserId = UUID()
         let firebaseUid = "test-firebase-uid"
         let groupId = UUID()
@@ -261,7 +261,7 @@ final class GroupServiceTests: XCTestCase {
     }
 
     func testLinkMemberToFirebaseAuthRejectsAlreadyLinked() async throws {
-        let testUserId = UUID()
+        let testUserId = "test-user-id"
         let existingFirebaseUid = "existing-firebase-uid"
         let groupId = UUID()
 
@@ -301,7 +301,7 @@ final class GroupServiceTests: XCTestCase {
     }
 
     func testLinkMemberToFirebaseAuthNotFound() async throws {
-        let testUserId = UUID()
+        let testUserId = "test-user-id"
         let nonExistentMemberId = UUID()
         let groupId = UUID()
 
