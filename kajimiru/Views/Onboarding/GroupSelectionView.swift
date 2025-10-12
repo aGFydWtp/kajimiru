@@ -4,6 +4,7 @@ import KajimiruKit
 struct GroupSelectionView: View {
     @EnvironmentObject var appState: AppState
     @State private var showingInviteCodeInput = false
+    @State private var showingGroupCreation = false
 
     var body: some View {
         NavigationStack {
@@ -22,11 +23,37 @@ struct GroupSelectionView: View {
 
                 // Group List
                 if appState.availableGroups.isEmpty {
-                    ContentUnavailableView(
-                        "グループがありません",
-                        systemImage: "person.3.fill",
-                        description: Text("新しいグループを作成してください")
-                    )
+                    VStack(spacing: 24) {
+                        Spacer()
+
+                        VStack(spacing: 16) {
+                            Image(systemName: "person.3.fill")
+                                .font(.system(size: 48))
+                                .foregroundStyle(.secondary)
+
+                            VStack(spacing: 8) {
+                                Text("グループがありません")
+                                    .font(.headline)
+                                Text("新しいグループを作成するか、招待コードで参加してください")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .multilineTextAlignment(.center)
+                            }
+                        }
+
+                        Button {
+                            showingGroupCreation = true
+                        } label: {
+                            Label("新しいグループを作成", systemImage: "plus.circle.fill")
+                                .font(.headline)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .padding(.horizontal)
+
+                        Spacer()
+                    }
                 } else {
                     List {
                         ForEach(appState.availableGroups) { group in
@@ -65,6 +92,13 @@ struct GroupSelectionView: View {
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showingInviteCodeInput) {
                 InviteCodeInputView()
+            }
+            .sheet(isPresented: $showingGroupCreation) {
+                InitialSetupView(
+                    title: "新しいグループを作成",
+                    isInitialSetup: false,
+                    showInviteOption: false
+                )
             }
             .overlay {
                 if appState.isLoading {

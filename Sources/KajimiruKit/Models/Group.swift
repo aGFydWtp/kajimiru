@@ -7,9 +7,9 @@ public struct Group: Identifiable, Codable, Hashable, Sendable {
     public var icon: String?
     public var members: [Member]
     public var createdAt: Date
-    public var createdBy: UUID
+    public var createdBy: String
     public var updatedAt: Date
-    public var updatedBy: UUID
+    public var updatedBy: String
 
     public init(
         id: UUID = UUID(),
@@ -17,9 +17,9 @@ public struct Group: Identifiable, Codable, Hashable, Sendable {
         icon: String? = nil,
         members: [Member] = [],
         createdAt: Date = Date(),
-        createdBy: UUID,
+        createdBy: String,
         updatedAt: Date = Date(),
-        updatedBy: UUID
+        updatedBy: String
     ) {
         self.id = id
         self.name = name
@@ -41,7 +41,7 @@ public struct Group: Identifiable, Codable, Hashable, Sendable {
         name: String? = nil,
         icon: String?? = nil,
         members: [Member]? = nil,
-        updatedBy: UUID
+        updatedBy: String
     ) -> Group {
         var copy = self
         if let name {

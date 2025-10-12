@@ -48,14 +48,6 @@ class AppState: ObservableObject {
         }
     }
 
-    var currentUserId: UUID {
-        // Use authenticated user ID if available, otherwise use mock ID
-        if let userID = authService?.userID, let uuid = UUID(uuidString: userID) {
-            return uuid
-        }
-        return MockDataHelper.userId
-    }
-
     var isAuthenticated: Bool {
         authService?.isAuthenticated ?? false
     }
@@ -142,6 +134,13 @@ class AppState: ObservableObject {
     private lazy var analyticsService = ChoreAnalyticsService()
 
     // MARK: - User Setup and Status Check
+    
+    func getCurrentUserId() throws -> String {
+        guard let firebaseUid = authService?.userID else {
+            throw AppStateError.authenticationRequired
+        }
+        return firebaseUid
+    }
 
     /// Check if the current user exists and has a group
     func checkUserStatus() async {
@@ -210,8 +209,8 @@ class AppState: ObservableObject {
                         }
                     }
                 } else {
-                    // User doesn't exist in Firestore yet - check if onboarding was completed
-                    hasCompletedSetup = hasCompletedOnboardingPersisted
+                    // User doesn't exist in Firestore yet - need initial setup
+                    hasCompletedSetup = false
                     needsGroupSelection = false
                 }
             }
@@ -230,6 +229,7 @@ class AppState: ObservableObject {
         for id in ids {
             if let group = try await groupRepo.fetchGroup(id: id) {
                 groups.append(group)
+            } else {
             }
         }
         return groups
@@ -237,13 +237,34 @@ class AppState: ObservableObject {
 
     /// Load user's group data
     private func loadUserGroup(groupId: UUID) async throws {
-        group = try await groupRepo.fetchGroup(id: groupId)
-        if let group = group {
-            members = try await memberRepo.listMembers(in: group.id, includeDeleted: false)
-            chores = try await choreRepo.listChores(in: group.id, includeDeleted: false)
-            choreLogs = try await choreLogRepo.listLogs(in: group.id, since: nil)
-        } else {
-            throw KajimiruError.notFound
+
+        do {
+            group = try await groupRepo.fetchGroup(id: groupId)
+
+            if let group = group {
+                do {
+                    members = try await memberRepo.listMembers(in: group.id, includeDeleted: false)
+                } catch {
+                    members = []
+                }
+
+                do {
+                    chores = try await choreRepo.listChores(in: group.id, includeDeleted: false)
+                } catch {
+                    chores = []
+                }
+
+                do {
+                    choreLogs = try await choreLogRepo.listLogs(in: group.id, since: nil)
+                } catch {
+                    choreLogs = []
+                }
+
+            } else {
+                throw KajimiruError.notFound
+            }
+        } catch {
+            throw error
         }
     }
 
@@ -278,6 +299,20 @@ class AppState: ObservableObject {
         isLoading = false
     }
 
+    /// Find a User by their Firebase UID
+    func findUserByFirebaseUid(_ firebaseUid: String) async throws -> User? {
+        // Query Firestore for user with matching firebaseUid (which is now the User.id)
+        guard let firestoreUserRepo = userRepo as? FirestoreUserRepository else {
+            // For mock repositories, check currentUser
+            if currentUser?.id == firebaseUid {
+                return currentUser
+            }
+            return nil
+        }
+
+        return try await firestoreUserRepo.fetchUserByFirebaseUid(firebaseUid)
+    }
+
     /// Create initial group for first-time user
     func createInitialGroup(groupName: String, yourName: String, memberNames: [String]) async throws {
         guard let authUID = authService?.userID,
@@ -289,12 +324,9 @@ class AppState: ObservableObject {
         errorMessage = nil
 
         do {
-            let userId = UUID()  // Generate new UUID for internal use
-
-            // 1. Create User
+            // 1. Create User - use Firebase UID as User.id
             let user = User(
-                id: userId,
-                firebaseUid: authUID,  // Store Firebase UID
+                id: authUID,  // Firebase UID is now the User ID
                 displayName: yourName,
                 email: userEmail,
                 avatarURL: nil,
@@ -304,28 +336,30 @@ class AppState: ObservableObject {
             )
             try await userRepo.save(user)
 
-            // 2. Create Group
+            // 2. Create Group - use Member UUID for createdBy/updatedBy
+            let memberUUID = UUID()  // Generate UUID for Member
             let group = Group(
                 name: groupName,
                 icon: "house.fill",
                 members: [],
-                createdBy: userId,
-                updatedBy: userId
+                createdBy: authUID,
+                updatedBy: authUID
             )
             try await groupRepo.save(group)
 
             // 3. Create self as admin member
-            // Use Firebase UID as Member document ID for security rules
+            // Member.id is UUID, Member.userId links to User.id (Firebase UID)
             let selfMember = Member(
-                id: userId,
-                userId: userId,
-                firebaseUid: authUID,  // Store Firebase UID for Firestore document ID
+                id: memberUUID,
+                userId: authUID,  // Link to User.id (Firebase UID)
                 displayName: yourName,
                 avatarURL: nil,
                 groupId: group.id,
                 role: .admin,
-                createdBy: userId,
-                updatedBy: userId
+                createdBy: authUID,
+                updatedBy: authUID,
+                deletedAt: nil,
+                deletedBy: nil
             )
             try await memberRepo.save(selfMember)
 
@@ -338,8 +372,10 @@ class AppState: ObservableObject {
                     avatarURL: nil,
                     groupId: group.id,
                     role: .member,
-                    createdBy: userId,
-                    updatedBy: userId
+                    createdBy: authUID,
+                    updatedBy: authUID,
+                    deletedAt: nil,
+                    deletedBy: nil
                 )
                 try await memberRepo.save(member)
                 allMembers.append(member)
@@ -381,7 +417,7 @@ class AppState: ObservableObject {
             isFavorite: isFavorite,
             notes: notes
         )
-        let chore = try await choreService.createChore(draft: draft, createdBy: currentUserId)
+        let chore = try await choreService.createChore(draft: draft, createdBy: getCurrentUserId())
         chores.append(chore)
     }
 
@@ -396,7 +432,7 @@ class AppState: ObservableObject {
         chore.weight = weight
         chore.notes = notes
         chore.isFavorite = isFavorite
-        chore = chore.updating(updatedBy: currentUserId)
+        chore = try chore.updating(updatedBy: getCurrentUserId())
 
         // Save to repository
         try await choreRepo.save(chore)
@@ -407,6 +443,7 @@ class AppState: ObservableObject {
 
     func deleteChore(choreId: UUID) async {
         do {
+            let currentUserId = try getCurrentUserId()
             // Find chore in local state
             guard let index = chores.firstIndex(where: { $0.id == choreId }) else {
                 throw AppStateError.choreNotFound
@@ -437,7 +474,7 @@ class AppState: ObservableObject {
             performerIds: performerIds,
             memo: memo
         )
-        let logs = try await choreLogService.recordChore(draft: draft, createdBy: currentUserId)
+        let logs = try await choreLogService.recordChore(draft: draft, createdBy: getCurrentUserId())
         choreLogs.append(contentsOf: logs)
     }
 
@@ -478,7 +515,7 @@ class AppState: ObservableObject {
             let member = try await groupService.addMember(
                 groupId: group.id,
                 draft: draft,
-                createdBy: currentUserId
+                createdBy: getCurrentUserId()
             )
             members.append(member)
             isLoading = false
@@ -497,11 +534,14 @@ class AppState: ObservableObject {
             throw AppStateError.groupRequired
         }
 
+        guard let firebaseUid = authService?.userID else {
+            throw AppStateError.authenticationRequired
+        }
+
         let invite = try await groupService.generateInviteCode(
             for: group.id,
             expiresInDays: 30,
-            maxUses: nil,
-            createdBy: currentUserId
+            createdBy: firebaseUid
         )
         return invite.code
     }
@@ -517,12 +557,9 @@ class AppState: ObservableObject {
         errorMessage = nil
 
         do {
-            let userId = UUID()  // Generate new UUID for internal use
-
             // Join the group via invite code
             let group = try await groupService.joinGroupWithInviteCode(
                 code: code,
-                userId: userId,
                 firebaseUid: authUID,
                 displayName: yourName,
                 avatarURL: nil
@@ -537,10 +574,9 @@ class AppState: ObservableObject {
                 try await userRepo.save(updatedUser)
                 currentUser = updatedUser
             } else {
-                // Create new user
+                // Create new user - use Firebase UID as User.id
                 let user = User(
-                    id: userId,
-                    firebaseUid: authUID,
+                    id: authUID,  // Firebase UID is now the User ID
                     displayName: yourName,
                     email: userEmail,
                     avatarURL: nil,
@@ -571,6 +607,100 @@ class AppState: ObservableObject {
         }
     }
 
+    /// Link Firebase Auth user to an existing unlinked member
+    func linkToExistingMember(
+        memberId: UUID,
+        groupId: UUID,
+        inviteCode: String
+    ) async throws {
+        guard let authUID = authService?.userID,
+              let userEmail = authService?.userEmail else {
+            throw AppStateError.authenticationRequired
+        }
+
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            let userId = UUID()  // Generate new UUID for User entity
+
+            // Link the member to Firebase Auth
+            let linkedMember = try await groupService.linkMemberToFirebaseAuth(
+                memberId: memberId,
+                groupId: groupId,
+                firebaseUid: authUID
+            )
+
+            // Verify and increment invite code usage
+            if let firestoreInviteRepo = inviteRepo as? FirestoreGroupInviteRepository,
+               let invite = try await firestoreInviteRepo.fetchInvite(code: inviteCode) {
+                let updatedInvite = invite.incrementUses()
+                try await inviteRepo.save(updatedInvite)
+            }
+
+            // Check if user already exists
+            if let firestoreUserRepo = userRepo as? FirestoreUserRepository,
+               let existingUser = try await firestoreUserRepo.fetchUserByFirebaseUid(authUID) {
+                // Update existing user's current group
+                var updatedUser = existingUser
+                updatedUser.currentGroupId = groupId
+                try await userRepo.save(updatedUser)
+                currentUser = updatedUser
+            } else {
+                // Create new user - use Firebase UID as User.id
+                let user = User(
+                    id: authUID,  // Firebase UID is now the User ID
+                    displayName: linkedMember.displayName,
+                    email: userEmail,
+                    avatarURL: linkedMember.avatarURL,
+                    currentGroupId: groupId,
+                    createdAt: Date(),
+                    updatedAt: Date()
+                )
+                try await userRepo.save(user)
+                currentUser = user
+            }
+
+            // Load group data
+            try await loadUserGroup(groupId: groupId)
+
+            // Persist to UserDefaults
+            lastSelectedGroupId = groupId
+            hasCompletedOnboardingPersisted = true
+
+            // Update state
+            hasCompletedSetup = true
+            needsGroupSelection = false
+            isLoading = false
+        } catch {
+            isLoading = false
+            errorMessage = error.localizedDescription
+            hasCompletedSetup = false
+            throw error
+        }
+    }
+
+    /// Get unlinked members (members without firebaseUid) for a group
+    func getUnlinkedMembers(for groupId: UUID) async throws -> [Member] {
+        let allMembers = try await memberRepo.listMembers(in: groupId, includeDeleted: false)
+        return allMembers.filter { $0.userId == nil }
+    }
+
+    /// Validate an invite code and return the group ID if valid
+    func validateInviteCode(_ code: String) async throws -> UUID {
+        if let firestoreInviteRepo = inviteRepo as? FirestoreGroupInviteRepository,
+           let invite = try await firestoreInviteRepo.fetchInvite(code: code) {
+
+            guard invite.isValid else {
+                throw AppStateError.invalidInviteCode
+            }
+
+            return invite.groupId
+        } else {
+            throw AppStateError.inviteCodeNotFound
+        }
+    }
+
     // MARK: - Group Management
 
     /// Update group name and icon
@@ -587,7 +717,7 @@ class AppState: ObservableObject {
                 groupId: group.id,
                 name: name,
                 icon: icon,
-                updatedBy: currentUserId
+                updatedBy: getCurrentUserId()
             )
             self.group = updatedGroup
         } catch {
@@ -615,6 +745,42 @@ class AppState: ObservableObject {
     }
 
     /// Switch to a different group
+    /// Create or update User document after joining via invite code
+    func createOrUpdateUserAfterJoin(
+        firebaseUid: String,
+        displayName: String,
+        groupId: UUID
+    ) async throws {
+        guard let authService = authService else {
+            throw AppStateError.authenticationRequired
+        }
+
+        // Check if user already exists - use Firebase UID as User.id
+        let existingUsers = try await userRepo.fetchUsers(ids: [firebaseUid])
+        if let existingUser = existingUsers.first {
+            var updatedUser = existingUser
+            updatedUser.currentGroupId = groupId
+            try await userRepo.save(updatedUser)
+            currentUser = updatedUser
+        } else {
+            let user = User(
+                id: firebaseUid,  // Firebase UID is now the User ID
+                displayName: displayName,
+                email: authService.userEmail,
+                avatarURL: nil,
+                currentGroupId: groupId,
+                createdAt: Date(),
+                updatedAt: Date()
+            )
+            try await userRepo.save(user)
+            currentUser = user
+        }
+
+        // Update state flags
+        hasCompletedOnboardingPersisted = true
+        lastSelectedGroupId = groupId
+    }
+
     func switchToGroup(groupId: UUID) async throws {
         guard let user = currentUser else {
             throw AppStateError.authenticationRequired
@@ -624,11 +790,6 @@ class AppState: ObservableObject {
         errorMessage = nil
 
         do {
-            // Load the target group
-            guard let targetGroup = try await groupRepo.fetchGroup(id: groupId) else {
-                throw AppStateError.groupRequired
-            }
-
             // Update user's current group
             var updatedUser = user
             updatedUser.currentGroupId = groupId
@@ -658,6 +819,8 @@ enum AppStateError: LocalizedError {
     case authenticationRequired
     case choreNotFound
     case groupRequired
+    case inviteCodeNotFound
+    case invalidInviteCode
 
     var errorDescription: String? {
         switch self {
@@ -667,6 +830,10 @@ enum AppStateError: LocalizedError {
             return "家事が見つかりません"
         case .groupRequired:
             return "グループが選択されていません"
+        case .inviteCodeNotFound:
+            return "招待コードが見つかりません"
+        case .invalidInviteCode:
+            return "招待コードが無効です（期限切れまたは使用済み）"
         }
     }
 }

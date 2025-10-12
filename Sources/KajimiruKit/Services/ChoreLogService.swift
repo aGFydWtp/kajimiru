@@ -71,7 +71,7 @@ public final class ChoreLogService: Sendable {
     }
 
     /// Persists new chore logs after validating the request. Creates one log per performer with evenly distributed weight.
-    public func recordChore(draft: ChoreLogDraft, createdBy: UUID) async throws -> [ChoreLog] {
+    public func recordChore(draft: ChoreLogDraft, createdBy: String) async throws -> [ChoreLog] {
         guard try await groupRepository.fetchGroup(id: draft.groupId) != nil else {
             throw KajimiruError.notFound
         }
@@ -106,7 +106,7 @@ public final class ChoreLogService: Sendable {
     }
 
     /// Applies updates to an existing log.
-    public func updateLog(logId: UUID, groupId: UUID, update: ChoreLogUpdate, updatedBy: UUID) async throws -> ChoreLog {
+    public func updateLog(logId: UUID, groupId: UUID, update: ChoreLogUpdate, updatedBy: String) async throws -> ChoreLog {
         let logs = try await logRepository.listLogs(in: groupId, since: nil)
         guard let existingIndex = logs.firstIndex(where: { $0.id == logId }) else {
             throw KajimiruError.notFound

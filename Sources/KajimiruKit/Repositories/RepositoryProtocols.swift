@@ -28,8 +28,9 @@ public protocol ReminderRepository: Sendable {
 }
 
 /// Handles user profile information.
+/// Note: User IDs are Firebase Authentication UIDs (String), not UUIDs.
 public protocol UserRepository: Sendable {
-    func fetchUsers(ids: [UUID]) async throws -> [User]
+    func fetchUsers(ids: [String]) async throws -> [User]
     func save(_ user: User) async throws
 }
 
@@ -38,7 +39,7 @@ public protocol MemberRepository: Sendable {
     func listMembers(in groupId: UUID, includeDeleted: Bool) async throws -> [Member]
     func fetchMember(id: UUID) async throws -> Member?
     func save(_ member: Member) async throws
-    func softDeleteMember(id: UUID, in groupId: UUID, deletedBy: UUID) async throws
+    func softDeleteMember(id: UUID, in groupId: UUID, deletedBy: String) async throws
     func listGroupsForUser(firebaseUid: String) async throws -> [UUID]
 }
 

@@ -25,7 +25,7 @@ struct MainTabView: View {
                 ChoreLogHistoryView()
             }
             .tabItem {
-                Label("記録", systemImage: "clock.fill")
+                Label("きろく", systemImage: "clock.fill")
             }
 
             NavigationStack {

@@ -83,13 +83,13 @@ public actor InMemoryReminderRepository: ReminderRepository {
 }
 
 public actor InMemoryUserRepository: UserRepository {
-    private var users: [UUID: User] = [:]
+    private var users: [String: User] = [:]
 
     public init(users: [User] = []) {
         for user in users { self.users[user.id] = user }
     }
 
-    public func fetchUsers(ids: [UUID]) async throws -> [User] {
+    public func fetchUsers(ids: [String]) async throws -> [User] {
         ids.compactMap { users[$0] }
     }
 
@@ -105,6 +105,11 @@ public actor InMemoryMemberRepository: MemberRepository {
     public init(members: [Member] = []) {
         for member in members {
             self.members[member.id] = member
+            // Auto-associate member with group
+            if self.groupMembers[member.groupId] == nil {
+                self.groupMembers[member.groupId] = []
+            }
+            self.groupMembers[member.groupId]?.insert(member.id)
         }
     }
 
@@ -126,7 +131,7 @@ public actor InMemoryMemberRepository: MemberRepository {
         groupMembers[member.groupId]?.insert(member.id)
     }
 
-    public func softDeleteMember(id: UUID, in groupId: UUID, deletedBy: UUID) async throws {
+    public func softDeleteMember(id: UUID, in groupId: UUID, deletedBy: String) async throws {
         guard var member = members[id] else {
             throw KajimiruError.notFound
         }
@@ -140,7 +145,7 @@ public actor InMemoryMemberRepository: MemberRepository {
         
         // Search through all members to find those with matching firebaseUid
         for member in members.values {
-            if member.firebaseUid == firebaseUid && !member.isDeleted {
+            if member.userId == firebaseUid && !member.isDeleted {
                 if !groupIds.contains(member.groupId) {
                     groupIds.append(member.groupId)
                 }

@@ -10,7 +10,7 @@ struct SettingsView: View {
 
     var body: some View {
         List {
-            Section("グループ情報") {
+            Section("住まい") {
                 if let group = appState.group {
                     NavigationLink {
                         GroupSettingsView()
@@ -31,9 +31,9 @@ struct SettingsView: View {
                 }
             }
 
-            Section("家族・ルームメイト") {
+            Section("住人") {
                 if appState.members.isEmpty {
-                    Text("メンバーがいません")
+                    Text("住人がいません")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(appState.members.filter { !$0.isDeleted }) { member in
@@ -44,7 +44,7 @@ struct SettingsView: View {
                 Button {
                     showingAddMember = true
                 } label: {
-                    Label("メンバーを追加", systemImage: "person.badge.plus.fill")
+                    Label("住人を追加", systemImage: "person.badge.plus.fill")
                 }
             }
 
@@ -55,7 +55,7 @@ struct SettingsView: View {
                     Label("招待コードを表示", systemImage: "qrcode")
                 }
             } header: {
-                Text("家族・ルームメイトを招待")
+                Text("住まいに新しい人を招待")
             } footer: {
                 Text("招待コードを共有して、家族やルームメイトをグループに招待できます")
             }
@@ -120,7 +120,7 @@ struct MemberRow: View {
                     .font(.body)
 
                 if let userId = member.userId {
-                    Text("ユーザーID: \(userId.uuidString.prefix(8))")
+                    Text("ユーザーID: \(userId.prefix(8))")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {

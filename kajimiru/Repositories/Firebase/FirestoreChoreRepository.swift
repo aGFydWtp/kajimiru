@@ -49,6 +49,25 @@ actor FirestoreChoreRepository: ChoreRepository, FirestoreChoreRepositoryProtoco
 
     func save(_ chore: Chore) async throws {
         let docRef = choresCollection(groupId: chore.groupId).document(chore.id.uuidString)
-        try docRef.setData(from: chore)
+
+        // Convert chore to dictionary to explicitly handle null values
+        var data: [String: Any] = [
+            "id": chore.id.uuidString,
+            "groupId": chore.groupId.uuidString,
+            "title": chore.title,
+            "weight": chore.weight,
+            "isFavorite": chore.isFavorite,
+            "createdAt": Timestamp(date: chore.createdAt),
+            "createdBy": chore.createdBy,
+            "updatedAt": Timestamp(date: chore.updatedAt),
+            "updatedBy": chore.updatedBy
+        ]
+
+        // Optional fields - use NSNull for nil values to ensure field exists in Firestore
+        data["notes"] = chore.notes ?? NSNull()
+        data["deletedAt"] = chore.deletedAt.map { Timestamp(date: $0) } ?? NSNull()
+        data["deletedBy"] = chore.deletedBy ?? NSNull()
+
+        try await docRef.setData(data)
     }
 }

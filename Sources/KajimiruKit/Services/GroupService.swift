@@ -12,10 +12,10 @@ public struct GroupDraft: Sendable {
 
 public struct MemberDraft: Sendable {
     public var displayName: String
-    public var userId: UUID?
+    public var userId: String?  // Firebase Authentication UID
     public var avatarURL: URL?
 
-    public init(displayName: String, userId: UUID? = nil, avatarURL: URL? = nil) {
+    public init(displayName: String, userId: String? = nil, avatarURL: URL? = nil) {
         self.displayName = displayName
         self.userId = userId
         self.avatarURL = avatarURL
@@ -39,7 +39,7 @@ public final class GroupService: Sendable {
     }
 
     /// Creates a new group.
-    public func createGroup(draft: GroupDraft, createdBy: UUID) async throws -> Group {
+    public func createGroup(draft: GroupDraft, createdBy: String) async throws -> Group {
         let name = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else {
             throw KajimiruError.validationFailed(reason: "Group name must not be empty.")
@@ -57,7 +57,7 @@ public final class GroupService: Sendable {
     }
 
     /// Updates group metadata.
-    public func updateGroup(groupId: UUID, name: String? = nil, icon: String?? = nil, updatedBy: UUID) async throws -> Group {
+    public func updateGroup(groupId: UUID, name: String? = nil, icon: String?? = nil, updatedBy: String) async throws -> Group {
         guard var group = try await groupRepository.fetchGroup(id: groupId) else {
             throw KajimiruError.notFound
         }
@@ -78,7 +78,7 @@ public final class GroupService: Sendable {
     }
 
     /// Adds a new member to the group.
-    public func addMember(groupId: UUID, draft: MemberDraft, createdBy: UUID) async throws -> Member {
+    public func addMember(groupId: UUID, draft: MemberDraft, createdBy: String) async throws -> Member {
         guard let group = try await groupRepository.fetchGroup(id: groupId) else {
             throw KajimiruError.notFound
         }
@@ -108,7 +108,7 @@ public final class GroupService: Sendable {
     }
 
     /// Updates an existing member.
-    public func updateMember(memberId: UUID, displayName: String? = nil, avatarURL: URL?? = nil, updatedBy: UUID) async throws -> Member {
+    public func updateMember(memberId: UUID, displayName: String? = nil, avatarURL: URL?? = nil, updatedBy: String) async throws -> Member {
         guard let member = try await memberRepository.fetchMember(id: memberId) else {
             throw KajimiruError.notFound
         }
@@ -119,7 +119,7 @@ public final class GroupService: Sendable {
     }
 
     /// Soft deletes a member.
-    public func deleteMember(groupId: UUID, memberId: UUID, deletedBy: UUID) async throws {
+    public func deleteMember(groupId: UUID, memberId: UUID, deletedBy: String) async throws {
         guard let member = try await memberRepository.fetchMember(id: memberId) else {
             throw KajimiruError.notFound
         }
@@ -144,14 +144,40 @@ public final class GroupService: Sendable {
         try await memberRepository.listMembers(in: groupId, includeDeleted: includeDeleted)
     }
 
+    /// Links an existing member (without firebaseUid) to a Firebase authenticated user
+    public func linkMemberToFirebaseAuth(
+        memberId: UUID,
+        groupId: UUID,
+        firebaseUid: String
+    ) async throws -> Member {
+        // Fetch member from the specified group
+        let members = try await memberRepository.listMembers(in: groupId, includeDeleted: false)
+        guard var member = members.first(where: { $0.id == memberId }) else {
+            throw KajimiruError.notFound
+        }
+
+        // Verify member doesn't already have a firebaseUid
+        if member.userId != nil {
+            throw KajimiruError.validationFailed(reason: "このメンバーは既に認証されています")
+        }
+
+        // Update member with firebaseUid and userId
+        member = member.updating(
+            userId: firebaseUid,
+            updatedBy: firebaseUid
+        )
+        try await memberRepository.save(member)
+
+        return member
+    }
+
     // MARK: - Invite Code Management
 
     /// Generates a new invite code for a group
     public func generateInviteCode(
         for groupId: UUID,
         expiresInDays: Int = 30,
-        maxUses: Int? = nil,
-        createdBy: UUID
+        createdBy: String
     ) async throws -> GroupInvite {
         // Verify group exists
         guard try await groupRepository.fetchGroup(id: groupId) != nil else {
@@ -161,13 +187,13 @@ public final class GroupService: Sendable {
         // Generate unique code
         var code = GroupInvite.generateCode()
         var attempts = 0
-        while try await inviteRepository.fetchInvite(code: code) != nil {
-            code = GroupInvite.generateCode()
-            attempts += 1
-            if attempts > 10 {
-                throw KajimiruError.validationFailed(reason: "Failed to generate unique invite code")
-            }
-        }
+//        while try await inviteRepository.fetchInvite(code: code) != nil {
+//            code = GroupInvite.generateCode()
+//            attempts += 1
+//            if attempts > 10 {
+//                throw KajimiruError.validationFailed(reason: "Failed to generate unique invite code")
+//            }
+//        }
 
         let expiresAt = Calendar.current.date(byAdding: .day, value: expiresInDays, to: Date())
 
@@ -175,7 +201,6 @@ public final class GroupService: Sendable {
             groupId: groupId,
             code: code,
             expiresAt: expiresAt,
-            maxUses: maxUses,
             createdBy: createdBy
         )
 
@@ -186,7 +211,6 @@ public final class GroupService: Sendable {
     /// Validates an invite code and adds the user to the group
     public func joinGroupWithInviteCode(
         code: String,
-        userId: UUID,
         firebaseUid: String,
         displayName: String,
         avatarURL: URL? = nil
@@ -207,27 +231,27 @@ public final class GroupService: Sendable {
 
         // Check if user is already a member
         let existingMembers = try await memberRepository.listMembers(in: group.id, includeDeleted: false)
-        if existingMembers.contains(where: { $0.firebaseUid == firebaseUid }) {
+        if existingMembers.contains(where: { $0.userId == firebaseUid }) {
             throw KajimiruError.validationFailed(reason: "既にこのグループのメンバーです")
         }
 
-        // Create member
+        // Create member - generate new UUID for member ID, use userId for User link
+        let memberId = UUID()
         let member = Member(
-            id: userId,
-            userId: userId,
-            firebaseUid: firebaseUid,
+            id: memberId,
+            userId: firebaseUid,
             displayName: displayName,
             avatarURL: avatarURL,
             groupId: group.id,
             role: .member,
-            createdBy: userId,
-            updatedBy: userId
+            createdBy: firebaseUid,
+            updatedBy: firebaseUid
         )
         try await memberRepository.save(member)
 
         // Update group's member list
         var updatedGroup = group
-        updatedGroup = updatedGroup.updating(members: group.members + [member], updatedBy: userId)
+        updatedGroup = updatedGroup.updating(members: group.members + [member], updatedBy: firebaseUid)
         try await groupRepository.save(updatedGroup)
 
         // Increment invite use count

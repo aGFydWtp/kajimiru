@@ -1,9 +1,9 @@
 import Foundation
 
 /// Represents an application user who can belong to one or more groups.
+/// Note: The document ID in Firestore is the Firebase Authentication UID.
 public struct User: Identifiable, Codable, Hashable, Sendable {
-    public let id: UUID
-    public let firebaseUid: String  // Firebase Authentication UID
+    public let id: String  // Firebase Authentication UID - used as Firestore document ID
     public var displayName: String
     public var email: String?
     public var avatarURL: URL?
@@ -12,8 +12,7 @@ public struct User: Identifiable, Codable, Hashable, Sendable {
     public var updatedAt: Date
 
     public init(
-        id: UUID = UUID(),
-        firebaseUid: String,
+        id: String,  // Firebase Authentication UID
         displayName: String,
         email: String? = nil,
         avatarURL: URL? = nil,
@@ -22,7 +21,6 @@ public struct User: Identifiable, Codable, Hashable, Sendable {
         updatedAt: Date = Date()
     ) {
         self.id = id
-        self.firebaseUid = firebaseUid
         self.displayName = displayName
         self.email = email
         self.avatarURL = avatarURL

@@ -14,7 +14,7 @@ struct InitialSetupView: View {
     @State private var showError = false
     @State private var showingInviteCodeInput = false
 
-    init(title: String = "初期設定", isInitialSetup: Bool = true, showInviteOption: Bool = true) {
+    init(title: String = "はじめての住まいを作る", isInitialSetup: Bool = true, showInviteOption: Bool = true) {
         self.title = title
         self.isInitialSetup = isInitialSetup
         self.showInviteOption = showInviteOption
@@ -28,7 +28,7 @@ struct InitialSetupView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Kajimiruへようこそ！")
                                 .font(.title2.weight(.bold))
-                            Text("まずはグループとメンバーを作成しましょう")
+                            Text("まずは住まいと住人を作成しましょう")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
@@ -41,7 +41,7 @@ struct InitialSetupView: View {
                     TextField("例: 私の家", text: $groupName)
                         .autocorrectionDisabled()
                 } header: {
-                    Text("家事を管理する家の名前")
+                    Text("家事を管理する住まいの名前")
                 }
 
                 Section {
@@ -56,7 +56,7 @@ struct InitialSetupView: View {
                 Section {
                     ForEach(memberNames.indices, id: \.self) { index in
                         HStack {
-                            TextField("メンバー名", text: $memberNames[index])
+                            TextField("住人のなまえ", text: $memberNames[index])
                                 .autocorrectionDisabled()
 
                             Button(role: .destructive) {
@@ -71,12 +71,12 @@ struct InitialSetupView: View {
                     Button {
                         memberNames.append("")
                     } label: {
-                        Label("メンバーを追加", systemImage: "plus.circle.fill")
+                        Label("住人を追加", systemImage: "plus.circle.fill")
                     }
                 } header: {
-                    Text("メンバー（任意）")
+                    Text("あなたと生活を共にする住人（任意）")
                 } footer: {
-                    Text("あなた以外の家族やルームメイトを追加できます")
+                    Text("あなた以外の住人を追加できます")
                 }
 
                 Section {
@@ -106,19 +106,30 @@ struct InitialSetupView: View {
                             Button {
                                 showingInviteCodeInput = true
                             } label: {
-                                Text("招待コードで参加")
+                                Text("招待コードで別の住まいに参加する")
                                     .font(.subheadline)
                             }
                             Spacer()
                         }
                         .listRowBackground(Color.clear)
-                    } footer: {
-                        Text("既存のグループに招待コードで参加できます")
                     }
                 }
             }
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                if isInitialSetup {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button {
+                            Task {
+                                try authService.signOut()
+                            }
+                        } label: {
+                            Label("アカウントを切り替え", systemImage: "person.crop.circle.badge.questionmark")
+                        }
+                    }
+                }
+            }
             .sheet(isPresented: $showingInviteCodeInput) {
                 InviteCodeInputView()
             }

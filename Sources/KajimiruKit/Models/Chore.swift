@@ -12,11 +12,11 @@ public struct Chore: Identifiable, Codable, Hashable, Sendable {
     public var notes: String?
     public var isFavorite: Bool
     public var createdAt: Date
-    public var createdBy: UUID
+    public var createdBy: String
     public var updatedAt: Date
-    public var updatedBy: UUID
+    public var updatedBy: String
     public var deletedAt: Date?
-    public var deletedBy: UUID?
+    public var deletedBy: String?
 
     public init(
         id: UUID = UUID(),
@@ -26,11 +26,11 @@ public struct Chore: Identifiable, Codable, Hashable, Sendable {
         notes: String? = nil,
         isFavorite: Bool = false,
         createdAt: Date = Date(),
-        createdBy: UUID,
+        createdBy: String,
         updatedAt: Date = Date(),
-        updatedBy: UUID,
+        updatedBy: String,
         deletedAt: Date? = nil,
-        deletedBy: UUID? = nil
+        deletedBy: String? = nil
     ) {
         precondition(Self.allowedWeights.contains(weight), "Invalid chore weight")
         self.id = id
@@ -56,7 +56,7 @@ public struct Chore: Identifiable, Codable, Hashable, Sendable {
         weight: Int? = nil,
         notes: String?? = nil,
         isFavorite: Bool? = nil,
-        updatedBy: UUID
+        updatedBy: String
     ) -> Chore {
         var copy = self
         if let title {

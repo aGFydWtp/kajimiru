@@ -3,6 +3,7 @@ import FirebaseFirestore
 import KajimiruKit
 
 /// Firestore implementation of UserRepository
+/// Note: User document IDs are Firebase Authentication UIDs (String)
 actor FirestoreUserRepository: UserRepository {
     private let db = Firestore.firestore()
 
@@ -10,7 +11,7 @@ actor FirestoreUserRepository: UserRepository {
         db.collection("users")
     }
 
-    func fetchUsers(ids: [UUID]) async throws -> [User] {
+    func fetchUsers(ids: [String]) async throws -> [User] {
         guard !ids.isEmpty else {
             return []
         }
@@ -21,10 +22,8 @@ actor FirestoreUserRepository: UserRepository {
         var allUsers: [User] = []
 
         for chunk in chunks {
-            // Query by firebaseUid field instead of document ID
-            let stringIds = chunk.map { $0.uuidString }
             let snapshot = try await usersCollection
-                .whereField("firebaseUid", in: stringIds)
+                .whereField(FieldPath.documentID(), in: chunk)
                 .getDocuments()
 
             let users = try snapshot.documents.compactMap { try $0.data(as: User.self) }
@@ -37,12 +36,18 @@ actor FirestoreUserRepository: UserRepository {
     // Fetch user by Firebase UID (for authentication flow)
     func fetchUserByFirebaseUid(_ firebaseUid: String) async throws -> User? {
         let doc = try await usersCollection.document(firebaseUid).getDocument()
-        return try doc.data(as: User.self)
+
+        guard doc.exists else {
+            return nil
+        }
+
+        let user = try doc.data(as: User.self)
+        return user
     }
 
     func save(_ user: User) async throws {
-        // Use Firebase UID as document ID for security rules
-        try usersCollection.document(user.firebaseUid).setData(from: user)
+        // Use Firebase UID (user.id) as document ID
+        try usersCollection.document(user.id).setData(from: user)
     }
 }
 

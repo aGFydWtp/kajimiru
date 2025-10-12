@@ -49,7 +49,7 @@ public final class ChoreService: Sendable {
     }
 
     /// Creates a new chore.
-    public func createChore(draft: ChoreDraft, createdBy: UUID) async throws -> Chore {
+    public func createChore(draft: ChoreDraft, createdBy: String) async throws -> Chore {
         try validate(draft: draft)
         guard try await groupRepository.fetchGroup(id: draft.groupId) != nil else {
             throw KajimiruError.notFound
@@ -69,7 +69,7 @@ public final class ChoreService: Sendable {
     }
 
     /// Applies updates to an existing chore and persists the result.
-    public func updateChore(id: UUID, update: ChoreUpdate, updatedBy: UUID) async throws -> Chore {
+    public func updateChore(id: UUID, update: ChoreUpdate, updatedBy: String) async throws -> Chore {
         guard var chore = try await choreRepository.fetchChore(id: id) else {
             throw KajimiruError.notFound
         }
@@ -99,7 +99,7 @@ public final class ChoreService: Sendable {
     }
 
     /// Soft deletes the chore.
-    public func deleteChore(id: UUID, deletedBy: UUID) async throws {
+    public func deleteChore(id: UUID, deletedBy: String) async throws {
         guard var chore = try await choreRepository.fetchChore(id: id) else {
             throw KajimiruError.notFound
         }

@@ -40,56 +40,57 @@ actor FirestoreMemberRepository: MemberRepository {
     }
 
     func save(_ member: Member) async throws {
-        // For members with firebaseUid (linked to Firebase Auth), use firebaseUid as document ID
-        // For members without firebaseUid (non-authenticated members), use member.id
-        let docId: String
-        if let firebaseUid = member.firebaseUid {
-            docId = firebaseUid
-        } else {
-            docId = member.id.uuidString
-        }
+        let docRef = membersCollection(groupId: member.groupId).document(member.id.uuidString)
 
-        let docRef = membersCollection(groupId: member.groupId).document(docId)
-        try docRef.setData(from: member)
+        // Convert member to dictionary to explicitly handle null values
+        var data: [String: Any] = [
+            "id": member.id.uuidString,
+            "displayName": member.displayName,
+            "groupId": member.groupId.uuidString,
+            "role": member.role.rawValue,
+            "createdAt": Timestamp(date: member.createdAt),
+            "createdBy": member.createdBy,
+            "updatedAt": Timestamp(date: member.updatedAt),
+            "updatedBy": member.updatedBy
+        ]
+
+        // Optional fields - use NSNull for nil values to ensure field exists in Firestore
+        data["userId"] = member.userId ?? NSNull()
+        data["avatarURL"] = member.avatarURL?.absoluteString ?? NSNull()
+        data["deletedAt"] = member.deletedAt.map { Timestamp(date: $0) } ?? NSNull()
+        data["deletedBy"] = member.deletedBy ?? NSNull()
+
+        try await docRef.setData(data)
     }
 
-    func softDeleteMember(id: UUID, in groupId: UUID, deletedBy: UUID) async throws {
+    func softDeleteMember(id: UUID, in groupId: UUID, deletedBy: String) async throws {
         let docRef = membersCollection(groupId: groupId).document(id.uuidString)
 
         try await docRef.updateData([
             "isDeleted": true,
             "deletedAt": Timestamp(date: Date()),
-            "deletedBy": deletedBy.uuidString
+            "deletedBy": deletedBy
         ])
     }
 
     /// List all groups that a user belongs to by their Firebase UID
     func listGroupsForUser(firebaseUid: String) async throws -> [UUID] {
-        // Strategy: Search for member documents where:
-        // 1. Document ID matches firebaseUid (new members)
-        // 2. Or traverse all groups to find members (fallback for old data)
-
         var groupIds: [UUID] = []
-
-        // First, try to find all groups
         let groupsSnapshot = try await db.collection("groups").getDocuments()
-
         for groupDoc in groupsSnapshot.documents {
-            guard let groupId = UUID(uuidString: groupDoc.documentID) else {
-                continue
-            }
-
-            // Check if this group has a member with matching firebaseUid
-            let memberDoc = try await db.collection("groups")
-                .document(groupDoc.documentID)
+            let groupId = UUID(uuidString: groupDoc.documentID)!
+            let memberDocs = try await db.collection("groups")
+                .document(groupId.uuidString)
                 .collection("members")
-                .document(firebaseUid)
-                .getDocument()
+                .whereField("userId", isEqualTo: firebaseUid)
+                .getDocuments()
 
-            if memberDoc.exists {
-                if let member = try? memberDoc.data(as: Member.self) {
-                    if member.deletedAt == nil {
-                        groupIds.append(groupId)
+            for doc in memberDocs.documents {
+                if doc.exists {
+                    if let member = try? doc.data(as: Member.self) {
+                        if member.deletedAt == nil {
+                            groupIds.append(groupId)
+                        }
                     }
                 }
             }

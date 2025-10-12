@@ -18,7 +18,7 @@ struct GroupSettingsView: View {
     private var currentMember: Member? {
         guard let group = appState.group,
               let authUID = authService.userID else { return nil }
-        return appState.members.first { $0.groupId == group.id && $0.firebaseUid == authUID }
+        return appState.members.first { $0.groupId == group.id && $0.userId == authUID }
     }
 
     private var isAdmin: Bool {

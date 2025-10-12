@@ -1,14 +1,16 @@
 import SwiftUI
+import KajimiruKit
 
 struct InviteCodeInputView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var authService: AuthenticationService
+    @StateObject private var inviteService = InviteService()
 
     @State private var inviteCode = ""
-    @State private var yourName = ""
     @State private var isLoading = false
     @State private var errorMessage: String?
+    @State private var showMemberLinking = false
 
     var body: some View {
         NavigationStack {
@@ -43,13 +45,6 @@ struct InviteCodeInputView: View {
                     Text("例: ABCD-1234")
                 }
 
-                Section {
-                    TextField("あなたの名前", text: $yourName)
-                        .autocorrectionDisabled()
-                } header: {
-                    Text("あなたの名前")
-                }
-
                 if let errorMessage = errorMessage {
                     Section {
                         Text(errorMessage)
@@ -68,9 +63,9 @@ struct InviteCodeInputView: View {
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("参加") {
+                    Button("次へ") {
                         Task {
-                            await joinGroup()
+                            await validateCodeAndProceed()
                         }
                     }
                     .disabled(!isValid || isLoading)
@@ -84,31 +79,34 @@ struct InviteCodeInputView: View {
                         .background(Color.black.opacity(0.2))
                 }
             }
-            .onAppear {
-                // Set default name from Firebase Auth
-                if yourName.isEmpty, let displayName = authService.userDisplayName {
-                    yourName = displayName
-                }
+            .sheet(isPresented: $showMemberLinking) {
+                MemberLinkingView(
+                    groupId: UUID(),
+                    inviteCode: inviteCode.trimmingCharacters(in: .whitespaces)
+                )
+                .environmentObject(appState)
+                .environmentObject(authService)
             }
         }
     }
 
     private var isValid: Bool {
         let trimmedCode = inviteCode.trimmingCharacters(in: .whitespaces)
-        let trimmedName = yourName.trimmingCharacters(in: .whitespaces)
-        return trimmedCode.count >= 8 && !trimmedName.isEmpty
+        return trimmedCode.count >= 8
     }
 
-    private func joinGroup() async {
+    private func validateCodeAndProceed() async {
         let trimmedCode = inviteCode.trimmingCharacters(in: .whitespaces)
-        let trimmedName = yourName.trimmingCharacters(in: .whitespaces)
 
         isLoading = true
         errorMessage = nil
 
         do {
-            try await appState.joinGroupWithInviteCode(code: trimmedCode, yourName: trimmedName)
-            dismiss()
+            // Validate invite code by calling Cloud Function
+            // This will check if the code exists and is valid
+            _ = try await inviteService.getGroupMembers(byInviteCode: trimmedCode)
+            isLoading = false
+            showMemberLinking = true
         } catch {
             errorMessage = error.localizedDescription
             isLoading = false

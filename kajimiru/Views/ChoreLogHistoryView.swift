@@ -58,7 +58,7 @@ struct ChoreLogHistoryView: View {
             }
         }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle("記録")
+        .navigationTitle("きろく")
         .navigationBarTitleDisplayMode(.inline)
     }
 

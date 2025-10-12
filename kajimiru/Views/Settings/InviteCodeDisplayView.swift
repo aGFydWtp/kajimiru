@@ -28,7 +28,7 @@ struct InviteCodeDisplayView: View {
                         Text("招待コード")
                             .font(.title2.weight(.bold))
 
-                        Text("家族やルームメイトにこのコードを共有してください")
+                        Text("新しく住まいに加わる人にこのコードを共有してください")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)

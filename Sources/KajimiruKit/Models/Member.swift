@@ -7,41 +7,38 @@ public enum MemberRole: String, Codable, Hashable, Sendable {
 }
 
 /// Represents a member who performs chores within a group.
-/// Members can optionally be linked to a User account but exist independently.
+/// Members can optionally be linked to a User account (via userId = Firebase UID) but exist independently.
 /// Supports soft deletion to preserve historical chore log references.
 public struct Member: Identifiable, Codable, Hashable, Sendable {
     public let id: UUID
-    public let userId: UUID?
-    public let firebaseUid: String?  // Firebase Authentication UID (for linked members)
+    public let userId: String?  // Firebase Authentication UID (links to User.id)
     public var displayName: String
     public var avatarURL: URL?
     public var groupId: UUID
     public var role: MemberRole
     public var createdAt: Date
-    public var createdBy: UUID
+    public var createdBy: String
     public var updatedAt: Date
-    public var updatedBy: UUID
+    public var updatedBy: String
     public var deletedAt: Date?
-    public var deletedBy: UUID?
+    public var deletedBy: String?
 
     public init(
         id: UUID = UUID(),
-        userId: UUID? = nil,
-        firebaseUid: String? = nil,
+        userId: String? = nil,
         displayName: String,
         avatarURL: URL? = nil,
         groupId: UUID,
         role: MemberRole = .member,
         createdAt: Date = Date(),
-        createdBy: UUID,
+        createdBy: String,
         updatedAt: Date = Date(),
-        updatedBy: UUID,
+        updatedBy: String,
         deletedAt: Date? = nil,
-        deletedBy: UUID? = nil
+        deletedBy: String? = nil
     ) {
         self.id = id
         self.userId = userId
-        self.firebaseUid = firebaseUid
         self.displayName = displayName
         self.avatarURL = avatarURL
         self.groupId = groupId
@@ -63,7 +60,7 @@ public struct Member: Identifiable, Codable, Hashable, Sendable {
     public func updating(
         displayName: String? = nil,
         avatarURL: URL?? = nil,
-        updatedBy: UUID
+        updatedBy: String
     ) -> Member {
         var copy = self
         if let displayName {
@@ -77,8 +74,29 @@ public struct Member: Identifiable, Codable, Hashable, Sendable {
         return copy
     }
 
+    /// Returns a new member with updated userId and firebaseUid (for linking to Firebase Auth).
+    public func updating(
+        userId: String,
+        updatedBy: String
+    ) -> Member {
+        Member(
+            id: self.id,
+            userId: userId,
+            displayName: self.displayName,
+            avatarURL: self.avatarURL,
+            groupId: self.groupId,
+            role: self.role,
+            createdAt: self.createdAt,
+            createdBy: self.createdBy,
+            updatedAt: Date(),
+            updatedBy: updatedBy,
+            deletedAt: self.deletedAt,
+            deletedBy: self.deletedBy
+        )
+    }
+
     /// Returns a new member marked as deleted.
-    public func softDeleting(deletedBy: UUID) -> Member {
+    public func softDeleting(deletedBy: String) -> Member {
         var copy = self
         copy.deletedAt = Date()
         copy.deletedBy = deletedBy

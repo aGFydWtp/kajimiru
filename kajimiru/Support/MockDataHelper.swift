@@ -3,7 +3,7 @@ import KajimiruKit
 
 /// Helper to create MVP mock data matching product spec.
 struct MockDataHelper {
-    static let userId = UUID()
+    static let userId = UUID().uuidString
 
     static let sampleMemos = [
         "いつもより時間かかった",

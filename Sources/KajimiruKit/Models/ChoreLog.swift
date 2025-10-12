@@ -11,9 +11,9 @@ public struct ChoreLog: Identifiable, Codable, Hashable, Sendable {
     public var batchId: UUID
     public var performerCount: Int
     public var createdAt: Date
-    public var createdBy: UUID
+    public var createdBy: String
     public var updatedAt: Date
-    public var updatedBy: UUID
+    public var updatedBy: String
 
     public init(
         id: UUID = UUID(),
@@ -25,9 +25,9 @@ public struct ChoreLog: Identifiable, Codable, Hashable, Sendable {
         batchId: UUID = UUID(),
         performerCount: Int = 1,
         createdAt: Date = Date(),
-        createdBy: UUID,
+        createdBy: String,
         updatedAt: Date = Date(),
-        updatedBy: UUID
+        updatedBy: String
     ) {
         precondition(weight > 0, "Weight must be positive")
         precondition(performerCount > 0, "Performer count must be positive")
@@ -48,7 +48,7 @@ public struct ChoreLog: Identifiable, Codable, Hashable, Sendable {
     public func updating(
         performerId: UUID? = nil,
         memo: String?? = nil,
-        updatedBy: UUID
+        updatedBy: String
     ) -> ChoreLog {
         var copy = self
         if let performerId {

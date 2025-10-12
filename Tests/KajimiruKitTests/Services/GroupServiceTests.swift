@@ -216,4 +216,116 @@ final class GroupServiceTests: XCTestCase {
         let allMembers = try await service.listMembers(in: group.id, includeDeleted: true)
         XCTAssertEqual(allMembers.count, 1)
     }
+
+    func testLinkMemberToFirebaseAuth() async throws {
+        let testUserId = UUID()
+        let newUserId = UUID()
+        let firebaseUid = "test-firebase-uid"
+        let groupId = UUID()
+
+        // Create an unlinked member (no firebaseUid)
+        let member = Member(
+            displayName: "Unlinked User",
+            groupId: groupId,
+            role: .member,
+            createdBy: testUserId,
+            updatedBy: testUserId
+        )
+
+        let groupRepository = InMemoryGroupRepository()
+        let memberRepository = InMemoryMemberRepository(members: [member])
+        let inviteRepository = InMemoryGroupInviteRepository()
+        let service = GroupService(groupRepository: groupRepository, memberRepository: memberRepository, inviteRepository: inviteRepository)
+
+        // Link the member to Firebase Auth
+        let linkedMember = try await service.linkMemberToFirebaseAuth(
+            memberId: member.id,
+            groupId: groupId,
+            firebaseUid: firebaseUid,
+            userId: newUserId,
+            updatedBy: newUserId
+        )
+
+        // Verify the member was linked
+        XCTAssertEqual(linkedMember.id, member.id)
+        XCTAssertEqual(linkedMember.firebaseUid, firebaseUid)
+        XCTAssertEqual(linkedMember.userId, newUserId)
+        XCTAssertEqual(linkedMember.displayName, member.displayName)
+        XCTAssertEqual(linkedMember.updatedBy, newUserId)
+        XCTAssertGreaterThan(linkedMember.updatedAt, member.updatedAt)
+
+        // Verify the linked member is stored
+        let storedMember = try await memberRepository.fetchMember(id: member.id)
+        XCTAssertEqual(storedMember?.firebaseUid, firebaseUid)
+        XCTAssertEqual(storedMember?.userId, newUserId)
+    }
+
+    func testLinkMemberToFirebaseAuthRejectsAlreadyLinked() async throws {
+        let testUserId = UUID()
+        let existingFirebaseUid = "existing-firebase-uid"
+        let groupId = UUID()
+
+        // Create a member already linked to Firebase Auth
+        let member = Member(
+            userId: UUID(),
+            firebaseUid: existingFirebaseUid,
+            displayName: "Already Linked User",
+            groupId: groupId,
+            role: .member,
+            createdBy: testUserId,
+            updatedBy: testUserId
+        )
+
+        let groupRepository = InMemoryGroupRepository()
+        let memberRepository = InMemoryMemberRepository(members: [member])
+        let inviteRepository = InMemoryGroupInviteRepository()
+        let service = GroupService(groupRepository: groupRepository, memberRepository: memberRepository, inviteRepository: inviteRepository)
+
+        // Try to link the already-linked member
+        do {
+            _ = try await service.linkMemberToFirebaseAuth(
+                memberId: member.id,
+                groupId: groupId,
+                firebaseUid: "new-firebase-uid",
+                userId: UUID(),
+                updatedBy: testUserId
+            )
+            XCTFail("Expected validation error")
+        } catch let error as KajimiruError {
+            if case let .validationFailed(reason) = error {
+                XCTAssertEqual(reason, "このメンバーは既に認証されています")
+            } else {
+                XCTFail("Unexpected error: \(error)")
+            }
+        }
+    }
+
+    func testLinkMemberToFirebaseAuthNotFound() async throws {
+        let testUserId = UUID()
+        let nonExistentMemberId = UUID()
+        let groupId = UUID()
+
+        let groupRepository = InMemoryGroupRepository()
+        let memberRepository = InMemoryMemberRepository()
+        let inviteRepository = InMemoryGroupInviteRepository()
+        let service = GroupService(groupRepository: groupRepository, memberRepository: memberRepository, inviteRepository: inviteRepository)
+
+        // Try to link a non-existent member
+        do {
+            _ = try await service.linkMemberToFirebaseAuth(
+                memberId: nonExistentMemberId,
+                groupId: groupId,
+                firebaseUid: "firebase-uid",
+                userId: UUID(),
+                updatedBy: testUserId
+            )
+            XCTFail("Expected not found error")
+        } catch let error as KajimiruError {
+            if case .notFound = error {
+                // Expected
+            } else {
+                XCTFail("Unexpected error: \(error)")
+            }
+        }
+    }
 }
