@@ -335,6 +335,6 @@ struct EditChoreSheet: View {
 #Preview {
     NavigationStack {
         ChoreListView()
-            .environmentObject(AppState())
+            .environmentObject(AppState(useMockData: true))
     }
 }

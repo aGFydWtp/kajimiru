@@ -235,13 +235,14 @@ class AppState: ObservableObject {
         return groups
     }
 
-    /// Load user's group data
+    /// Load user's group data and setup real-time listeners
     private func loadUserGroup(groupId: UUID) async throws {
 
         do {
             group = try await groupRepo.fetchGroup(id: groupId)
 
             if let group = group {
+                // Initial load
                 do {
                     members = try await memberRepo.listMembers(in: group.id, includeDeleted: false)
                 } catch {
@@ -260,6 +261,9 @@ class AppState: ObservableObject {
                     choreLogs = []
                 }
 
+                // Setup real-time listeners for Firebase repositories
+                await setupRealtimeListeners(for: group.id)
+
             } else {
                 throw KajimiruError.notFound
             }
@@ -268,11 +272,57 @@ class AppState: ObservableObject {
         }
     }
 
+    /// Setup real-time listeners for group data (only for Firebase repositories)
+    private func setupRealtimeListeners(for groupId: UUID) async {
+        // Check if using Firebase repositories
+        if let firestoreChoreRepo = choreRepo as? FirestoreChoreRepository {
+            await firestoreChoreRepo.observeChores(in: groupId, includeDeleted: false) { [weak self] chores in
+                Task { @MainActor in
+                    self?.chores = chores
+                }
+            }
+        }
+
+        if let firestoreLogRepo = choreLogRepo as? FirestoreChoreLogRepository {
+            await firestoreLogRepo.observeLogs(in: groupId, since: nil) { [weak self] logs in
+                Task { @MainActor in
+                    self?.choreLogs = logs
+                }
+            }
+        }
+
+        if let firestoreMemberRepo = memberRepo as? FirestoreMemberRepository {
+            await firestoreMemberRepo.observeMembers(in: groupId, includeDeleted: false) { [weak self] members in
+                Task { @MainActor in
+                    self?.members = members
+                }
+            }
+        }
+    }
+
+    /// Stop all real-time listeners
+    private func stopRealtimeListeners() async {
+        if let firestoreChoreRepo = choreRepo as? FirestoreChoreRepository {
+            await firestoreChoreRepo.stopObserving()
+        }
+
+        if let firestoreLogRepo = choreLogRepo as? FirestoreChoreLogRepository {
+            await firestoreLogRepo.stopObserving()
+        }
+
+        if let firestoreMemberRepo = memberRepo as? FirestoreMemberRepository {
+            await firestoreMemberRepo.stopObserving()
+        }
+    }
+
     /// Select a group and load its data
     func selectGroup(_ group: Group) async {
         guard let user = currentUser else { return }
 
         isLoading = true
+
+        // Stop existing listeners before switching groups
+        await stopRealtimeListeners()
 
         do {
             // Update user's currentGroupId
@@ -635,8 +685,6 @@ class AppState: ObservableObject {
         errorMessage = nil
 
         do {
-            let userId = UUID()  // Generate new UUID for User entity
-
             // Link the member to Firebase Auth
             let linkedMember = try await groupService.linkMemberToFirebaseAuth(
                 memberId: memberId,
@@ -816,6 +864,10 @@ class AppState: ObservableObject {
 
             // Persist to UserDefaults
             lastSelectedGroupId = groupId
+
+            // Update state flags
+            hasCompletedSetup = true
+            needsGroupSelection = false
 
             isLoading = false
         } catch {

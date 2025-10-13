@@ -5,6 +5,7 @@ import KajimiruKit
 /// Firestore implementation of ChoreRepository
 actor FirestoreChoreRepository: ChoreRepository, FirestoreChoreRepositoryProtocol {
     private let db = Firestore.firestore()
+    private var listener: ListenerRegistration?
 
     private func choresCollection(groupId: UUID) -> CollectionReference {
         db.collection("groups").document(groupId.uuidString).collection("chores")
@@ -69,5 +70,46 @@ actor FirestoreChoreRepository: ChoreRepository, FirestoreChoreRepositoryProtoco
         data["deletedBy"] = chore.deletedBy ?? NSNull()
 
         try await docRef.setData(data)
+    }
+
+    /// Start listening to real-time updates for chores in a group
+    func observeChores(
+        in groupId: UUID,
+        includeDeleted: Bool,
+        onChange: @escaping @Sendable ([Chore]) -> Void
+    ) {
+        let query: Query = db.collection("groups")
+            .document(groupId.uuidString)
+            .collection("chores")
+
+        listener?.remove()
+        listener = query.addSnapshotListener { snapshot, error in
+            guard let snapshot = snapshot else {
+                print("Error fetching chores: \(error?.localizedDescription ?? "Unknown error")")
+                return
+            }
+
+            let chores = snapshot.documents.compactMap { doc -> Chore? in
+                guard let chore = try? doc.data(as: Chore.self) else {
+                    print("Failed to decode chore document: \(doc.documentID)")
+                    return nil
+                }
+
+                let isDeleted = chore.deletedAt != nil
+                if !includeDeleted && isDeleted {
+                    return nil
+                }
+
+                return chore
+            }
+
+            onChange(chores)
+        }
+    }
+
+    /// Stop listening to real-time updates
+    func stopObserving() {
+        listener?.remove()
+        listener = nil
     }
 }

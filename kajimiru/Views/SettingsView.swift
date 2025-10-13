@@ -139,6 +139,7 @@ struct MemberRow: View {
 #Preview {
     NavigationStack {
         SettingsView()
-            .environmentObject(AppState())
+            .environmentObject(AppState(useMockData: true))
+            .environmentObject(AuthenticationService())
     }
 }

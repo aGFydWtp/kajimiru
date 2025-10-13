@@ -224,6 +224,6 @@ struct ChoreLogCard: View {
 #Preview {
     NavigationStack {
         ChoreLogHistoryView()
-            .environmentObject(AppState())
+            .environmentObject(AppState(useMockData: true))
     }
 }

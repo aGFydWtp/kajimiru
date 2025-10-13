@@ -5,6 +5,7 @@ import KajimiruKit
 /// Firestore implementation of MemberRepository
 actor FirestoreMemberRepository: MemberRepository {
     private let db = Firestore.firestore()
+    private var listener: ListenerRegistration?
 
     private func membersCollection(groupId: UUID) -> CollectionReference {
         db.collection("groups").document(groupId.uuidString).collection("members")
@@ -97,5 +98,45 @@ actor FirestoreMemberRepository: MemberRepository {
         }
 
         return groupIds
+    }
+
+    /// Start listening to real-time updates for members in a group
+    func observeMembers(
+        in groupId: UUID,
+        includeDeleted: Bool,
+        onChange: @escaping @Sendable ([Member]) -> Void
+    ) {
+        let query: Query = db.collection("groups")
+            .document(groupId.uuidString)
+            .collection("members")
+
+        listener?.remove()
+        listener = query.addSnapshotListener { snapshot, error in
+            guard let snapshot = snapshot else {
+                print("Error fetching members: \(error?.localizedDescription ?? "Unknown error")")
+                return
+            }
+
+            let members = snapshot.documents.compactMap { doc -> Member? in
+                guard let member = try? doc.data(as: Member.self) else {
+                    print("Failed to decode member document: \(doc.documentID)")
+                    return nil
+                }
+
+                if !includeDeleted && member.isDeleted {
+                    return nil
+                }
+
+                return member
+            }
+
+            onChange(members)
+        }
+    }
+
+    /// Stop listening to real-time updates
+    func stopObserving() {
+        listener?.remove()
+        listener = nil
     }
 }

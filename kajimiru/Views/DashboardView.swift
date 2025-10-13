@@ -256,6 +256,6 @@ struct ChoreTile: View {
 #Preview {
     NavigationStack {
         DashboardView()
-            .environmentObject(AppState())
+            .environmentObject(AppState(useMockData: true))
     }
 }
