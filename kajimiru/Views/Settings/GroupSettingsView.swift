@@ -14,6 +14,7 @@ struct GroupSettingsView: View {
     @State private var showJoinGroup = false
     @State private var showError = false
     @State private var errorMessage = ""
+    @State private var showDeleteAlert = false
 
     private var currentMember: Member? {
         guard let group = appState.group,
@@ -81,8 +82,19 @@ struct GroupSettingsView: View {
                         }
                         .padding(.vertical, 4)
                     }
-                } header: {
-                    Text("グループ情報")
+                }
+
+                // Delete Group Section (Admin only)
+                if isAdmin {
+                    Section {
+                        Button(role: .destructive) {
+                            showDeleteAlert = true
+                        } label: {
+                            Label("住まいをを削除", systemImage: "trash")
+                        }
+                    } footer: {
+                        Text("住まいをを削除すると、関連するすべてのデータが完全に削除されます。この操作は取り消せません。")
+                    }
                 }
             }
 
@@ -110,38 +122,29 @@ struct GroupSettingsView: View {
                         }
                     }
                 } header: {
-                    Text("グループを切り替え")
+                    Text("住まいを切り替える")
                 }
             }
 
-            // Create New Group Section
             Section {
-                NavigationLink {
-                    InitialSetupView(title: "新しいグループを作成", isInitialSetup: false, showInviteOption: false)
-                        .environmentObject(appState)
+                Button {
+                    showCreateGroup = true
                 } label: {
-                    Label("新しいグループを作成", systemImage: "plus.circle")
+                    Label("新しい住まいを作成", systemImage: "plus.circle")
                 }
-            }
 
-            // Join Group Section
-            Section {
                 Button {
                     showJoinGroup = true
                 } label: {
-                    Label("招待コードでグループに参加", systemImage: "arrow.right.circle")
+                    Label("招待コードで住まいに参加", systemImage: "arrow.right.circle")
                 }
-                
-//                NavigationLink {
-//                    InviteCodeInputView()
-//                        .environmentObject(appState)
-//                } label: {
-//                    Label("招待コードでグループに参加", systemImage: "arrow.right.circle")
-//                }
             }
         }
-        .navigationTitle("グループ設定")
+        .navigationTitle("住まいの情報")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showCreateGroup) {
+            InitialSetupView(title: "新しい住まいを作成", isInitialSetup: false, showInviteOption: false).environmentObject(appState)
+        }
         .sheet(isPresented: $showJoinGroup) {
             InviteCodeInputView()
         }
@@ -155,8 +158,8 @@ struct GroupSettingsView: View {
         } message: {
             Text(errorMessage)
         }
-        .alert("グループ名を編集", isPresented: $showEditNameDialog) {
-            TextField("グループ名", text: $editedGroupName)
+        .alert("住まいの名称を編集", isPresented: $showEditNameDialog) {
+            TextField("住まいの名称", text: $editedGroupName)
             Button("保存") {
                 Task {
                     await saveGroupName()
@@ -166,7 +169,17 @@ struct GroupSettingsView: View {
                 showEditNameDialog = false
             }
         } message: {
-            Text("新しいグループ名を入力してください")
+            Text("新しい住まいの名称を入力してください")
+        }
+        .alert("住まいを削除", isPresented: $showDeleteAlert) {
+            Button("キャンセル", role: .cancel) { }
+            Button("削除", role: .destructive) {
+                Task {
+                    await deleteGroup()
+                }
+            }
+        } message: {
+            Text("この住まいを削除しますか？住まいに関連するすべてのデータが完全に削除されます。この操作は取り消せません。")
         }
     }
 
@@ -176,7 +189,7 @@ struct GroupSettingsView: View {
         do {
             try await appState.loadAvailableGroups()
         } catch {
-            errorMessage = "グループ一覧の読み込みに失敗しました: \(error.localizedDescription)"
+            errorMessage = "住まいの一覧の読み込みに失敗しました: \(error.localizedDescription)"
             showError = true
         }
     }
@@ -189,7 +202,7 @@ struct GroupSettingsView: View {
 
         let trimmedName = editedGroupName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else {
-            errorMessage = "グループ名を入力してください"
+            errorMessage = "住まいの名称を入力してください"
             showEditNameDialog = false
             showError = true
             return
@@ -199,7 +212,7 @@ struct GroupSettingsView: View {
             try await appState.updateGroup(name: trimmedName, icon: group.icon)
             showEditNameDialog = false
         } catch {
-            errorMessage = "グループ名の更新に失敗しました: \(error.localizedDescription)"
+            errorMessage = "住まいの名称の更新に失敗しました: \(error.localizedDescription)"
             showEditNameDialog = false
             showError = true
         }
@@ -213,7 +226,7 @@ struct GroupSettingsView: View {
         do {
             try await appState.updateGroup(name: group.name, icon: editedGroupIcon)
         } catch {
-            errorMessage = "グループアイコンの更新に失敗しました: \(error.localizedDescription)"
+            errorMessage = "住まいのアイコンの更新に失敗しました: \(error.localizedDescription)"
             showError = true
         }
     }
@@ -223,7 +236,17 @@ struct GroupSettingsView: View {
             try await appState.switchToGroup(groupId: group.id)
             dismiss()
         } catch {
-            errorMessage = "グループの切り替えに失敗しました: \(error.localizedDescription)"
+            errorMessage = "住まいの切り替えに失敗しました: \(error.localizedDescription)"
+            showError = true
+        }
+    }
+
+    private func deleteGroup() async {
+        do {
+            try await appState.deleteGroup()
+            dismiss()
+        } catch {
+            errorMessage = "住まいの削除に失敗しました: \(error.localizedDescription)"
             showError = true
         }
     }

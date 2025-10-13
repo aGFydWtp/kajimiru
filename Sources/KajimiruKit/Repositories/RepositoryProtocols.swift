@@ -18,6 +18,7 @@ public protocol ChoreLogRepository: Sendable {
 public protocol GroupRepository: Sendable {
     func fetchGroup(id: UUID) async throws -> Group?
     func save(_ group: Group) async throws
+    func deleteGroup(id: UUID) async throws
 }
 
 /// Handles reminder configuration and scheduling metadata.

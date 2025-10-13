@@ -274,6 +274,18 @@ class AppState: ObservableObject {
 
     /// Setup real-time listeners for group data (only for Firebase repositories)
     private func setupRealtimeListeners(for groupId: UUID) async {
+        // Listen to group document to detect deletion
+        if let firestoreGroupRepo = groupRepo as? FirestoreGroupRepository {
+            await firestoreGroupRepo.observeGroup(id: groupId) { [weak self] group in
+                Task { @MainActor in
+                    if group == nil {
+                        // Group was deleted - handle it
+                        await self?.handleGroupDeletion()
+                    }
+                }
+            }
+        }
+
         // Check if using Firebase repositories
         if let firestoreChoreRepo = choreRepo as? FirestoreChoreRepository {
             await firestoreChoreRepo.observeChores(in: groupId, includeDeleted: false) { [weak self] chores in
@@ -302,6 +314,10 @@ class AppState: ObservableObject {
 
     /// Stop all real-time listeners
     private func stopRealtimeListeners() async {
+        if let firestoreGroupRepo = groupRepo as? FirestoreGroupRepository {
+            await firestoreGroupRepo.stopObserving()
+        }
+
         if let firestoreChoreRepo = choreRepo as? FirestoreChoreRepository {
             await firestoreChoreRepo.stopObserving()
         }
@@ -312,6 +328,62 @@ class AppState: ObservableObject {
 
         if let firestoreMemberRepo = memberRepo as? FirestoreMemberRepository {
             await firestoreMemberRepo.stopObserving()
+        }
+    }
+
+    /// Handle when current group is deleted (by self or others)
+    private func handleGroupDeletion() async {
+        guard let authUID = authService?.userID else { return }
+
+        // Clear current group state
+        self.group = nil
+        self.members = []
+        self.chores = []
+        self.choreLogs = []
+
+        // Stop all listeners
+        await stopRealtimeListeners()
+
+        // Check remaining groups
+        do {
+            guard let firestoreMemberRepo = memberRepo as? FirestoreMemberRepository else {
+                // Not using Firestore, show initial setup
+                hasCompletedSetup = false
+                needsGroupSelection = false
+                return
+            }
+
+            let groupIds = try await firestoreMemberRepo.listGroupsForUser(firebaseUid: authUID)
+
+            if groupIds.isEmpty {
+                // No groups remaining - show initial setup
+                hasCompletedSetup = false
+                needsGroupSelection = false
+            } else if groupIds.count == 1 {
+                // Only one group remaining - auto-select it
+                try await loadUserGroup(groupId: groupIds[0])
+                lastSelectedGroupId = groupIds[0]
+
+                // Update user's currentGroupId
+                if var user = currentUser {
+                    user.currentGroupId = groupIds[0]
+                    try await userRepo.save(user)
+                    currentUser = user
+                }
+
+                hasCompletedSetup = true
+                needsGroupSelection = false
+            } else {
+                // Multiple groups remaining - show group selection
+                availableGroups = try await fetchGroups(ids: groupIds)
+                hasCompletedSetup = false
+                needsGroupSelection = true
+            }
+        } catch {
+            print("Error handling group deletion: \(error)")
+            // Fallback to initial setup
+            hasCompletedSetup = false
+            needsGroupSelection = false
         }
     }
 
@@ -566,27 +638,17 @@ class AppState: ObservableObject {
             throw AppStateError.groupRequired
         }
 
-        isLoading = true
-        errorMessage = nil
-
-        do {
-            let draft = MemberDraft(
-                displayName: displayName,
-                userId: nil,
-                avatarURL: nil
-            )
-            let member = try await groupService.addMember(
-                groupId: group.id,
-                draft: draft,
-                createdBy: getCurrentUserId()
-            )
-            members.append(member)
-            isLoading = false
-        } catch {
-            isLoading = false
-            errorMessage = error.localizedDescription
-            throw error
-        }
+        let draft = MemberDraft(
+            displayName: displayName,
+            userId: nil,
+            avatarURL: nil
+        )
+        _ = try await groupService.addMember(
+            groupId: group.id,
+            draft: draft,
+            createdBy: getCurrentUserId()
+        )
+        // Note: Don't append locally - real-time listener will update members array
     }
 
     // MARK: - Invite Code Management
@@ -876,6 +938,116 @@ class AppState: ObservableObject {
             throw error
         }
     }
+
+    /// Update member display name
+    func updateMember(memberId: UUID, displayName: String) async throws {
+        guard group != nil else {
+            throw AppStateError.groupRequired
+        }
+
+        guard let index = members.firstIndex(where: { $0.id == memberId }) else {
+            throw AppStateError.memberNotFound
+        }
+
+        var member = members[index]
+        member.displayName = displayName
+        member = member.updating(updatedBy: try getCurrentUserId())
+
+        try await memberRepo.save(member)
+        // Note: Don't update locally - real-time listener will update members array
+    }
+
+    /// Delete (soft delete) a member
+    func deleteMember(memberId: UUID) async throws {
+        guard let groupId = group?.id else {
+            throw AppStateError.groupRequired
+        }
+
+        let currentUserId = try getCurrentUserId()
+        try await memberRepo.softDeleteMember(id: memberId, in: groupId, deletedBy: currentUserId)
+        // Note: Don't update locally - real-time listener will update members array
+    }
+
+    /// Link a member to a Firebase user account
+    func linkMemberToUser(memberId: UUID, firebaseUid: String) async throws {
+        guard group != nil else {
+            throw AppStateError.groupRequired
+        }
+
+        guard let index = members.firstIndex(where: { $0.id == memberId }) else {
+            throw AppStateError.memberNotFound
+        }
+
+        var member = members[index]
+        member = member.updating(userId: firebaseUid, updatedBy: firebaseUid)
+
+        try await memberRepo.save(member)
+        // Note: Don't update locally - real-time listener will update members array
+    }
+
+    /// Unlink a member from their Firebase user account
+    func unlinkMember(memberId: UUID) async throws {
+        guard group != nil else {
+            throw AppStateError.groupRequired
+        }
+
+        guard let index = members.firstIndex(where: { $0.id == memberId }) else {
+            throw AppStateError.memberNotFound
+        }
+
+        let currentUserId = try getCurrentUserId()
+        var member = members[index]
+        member = member.updatingWithNilUserId(updatedBy: currentUserId)
+
+        try await memberRepo.save(member)
+        // Note: Don't update locally - real-time listener will update members array
+    }
+
+    /// Transfer user link from one member to another using Firestore transaction
+    func transferMemberLink(fromMemberId: UUID, toMemberId: UUID, userId: String) async throws {
+        guard let groupId = group?.id else {
+            throw AppStateError.groupRequired
+        }
+
+        // For Firestore repositories, use transaction
+        if let firestoreMemberRepo = memberRepo as? FirestoreMemberRepository {
+            try await firestoreMemberRepo.transferUserLink(
+                fromMemberId: fromMemberId,
+                toMemberId: toMemberId,
+                userId: userId,
+                groupId: groupId
+            )
+        } else {
+            // For non-Firestore repositories, do it sequentially
+            guard let fromIndex = members.firstIndex(where: { $0.id == fromMemberId }),
+                  let toIndex = members.firstIndex(where: { $0.id == toMemberId }) else {
+                throw AppStateError.memberNotFound
+            }
+
+            // Unlink from source
+            var fromMember = members[fromIndex]
+            fromMember = fromMember.updatingWithNilUserId(updatedBy: userId)
+            try await memberRepo.save(fromMember)
+
+            // Link to target
+            var toMember = members[toIndex]
+            toMember = toMember.updating(userId: userId, updatedBy: userId)
+            try await memberRepo.save(toMember)
+        }
+        // Note: Don't update locally - real-time listener will update members array
+    }
+
+    /// Physically delete the current group
+    func deleteGroup() async throws {
+        guard let groupId = group?.id else {
+            throw AppStateError.groupRequired
+        }
+
+        try await groupService.deleteGroup(groupId: groupId)
+
+        // handleGroupDeletion will be called by the group listener
+        // when it detects the group no longer exists
+    }
 }
 
 // MARK: - Errors
@@ -886,6 +1058,7 @@ enum AppStateError: LocalizedError {
     case groupRequired
     case inviteCodeNotFound
     case invalidInviteCode
+    case memberNotFound
 
     var errorDescription: String? {
         switch self {
@@ -899,6 +1072,8 @@ enum AppStateError: LocalizedError {
             return "招待コードが見つかりません"
         case .invalidInviteCode:
             return "招待コードが無効です（期限切れまたは使用済み）"
+        case .memberNotFound:
+            return "メンバーが見つかりません"
         }
     }
 }

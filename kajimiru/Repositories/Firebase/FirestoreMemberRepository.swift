@@ -139,4 +139,55 @@ actor FirestoreMemberRepository: MemberRepository {
         listener?.remove()
         listener = nil
     }
+
+    /// Transfer user link from one member to another using Firestore transaction
+    func transferUserLink(
+        fromMemberId: UUID,
+        toMemberId: UUID,
+        userId: String,
+        groupId: UUID
+    ) async throws {
+        let fromDocRef = membersCollection(groupId: groupId).document(fromMemberId.uuidString)
+        let toDocRef = membersCollection(groupId: groupId).document(toMemberId.uuidString)
+
+        _ = try await db.runTransaction { transaction, errorPointer in
+            // Read both members
+            let fromSnapshot: DocumentSnapshot
+            let toSnapshot: DocumentSnapshot
+
+            do {
+                fromSnapshot = try transaction.getDocument(fromDocRef)
+                toSnapshot = try transaction.getDocument(toDocRef)
+            } catch let error as NSError {
+                errorPointer?.pointee = error
+                return nil
+            }
+
+            guard fromSnapshot.exists, toSnapshot.exists else {
+                let error = NSError(
+                    domain: "FirestoreMemberRepository",
+                    code: 404,
+                    userInfo: [NSLocalizedDescriptionKey: "One or both members not found"]
+                )
+                errorPointer?.pointee = error
+                return nil
+            }
+
+            // Update from member - unlink
+            transaction.updateData([
+                "userId": NSNull(),
+                "updatedAt": Timestamp(date: Date()),
+                "updatedBy": userId
+            ], forDocument: fromDocRef)
+
+            // Update to member - link
+            transaction.updateData([
+                "userId": userId,
+                "updatedAt": Timestamp(date: Date()),
+                "updatedBy": userId
+            ], forDocument: toDocRef)
+
+            return nil
+        }
+    }
 }

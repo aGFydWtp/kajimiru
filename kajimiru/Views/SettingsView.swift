@@ -37,7 +37,13 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(appState.members.filter { !$0.isDeleted }) { member in
-                        MemberRow(member: member)
+                        NavigationLink {
+                            MemberDetailView(member: member)
+                                .environmentObject(appState)
+                                .environmentObject(authService)
+                        } label: {
+                            MemberRow(member: member)
+                        }
                     }
                 }
 
@@ -57,7 +63,7 @@ struct SettingsView: View {
             } header: {
                 Text("住まいに新しい人を招待")
             } footer: {
-                Text("招待コードを共有して、家族やルームメイトをグループに招待できます")
+                Text("招待コードを共有して、家族やルームメイトを住まいに招待できます")
             }
 
             Section("アカウント") {
@@ -119,11 +125,7 @@ struct MemberRow: View {
                 Text(member.displayName)
                     .font(.body)
 
-                if let userId = member.userId {
-                    Text("ユーザーID: \(userId.prefix(8))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else {
+                if member.userId == nil  {
                     Text("アカウント未連携")
                         .font(.caption)
                         .foregroundStyle(.secondary)

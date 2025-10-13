@@ -275,4 +275,13 @@ public final class GroupService: Sendable {
         let deactivated = invite.deactivate()
         try await inviteRepository.save(deactivated)
     }
+
+    /// Physically deletes a group
+    public func deleteGroup(groupId: UUID) async throws {
+        guard try await groupRepository.fetchGroup(id: groupId) != nil else {
+            throw KajimiruError.notFound
+        }
+
+        try await groupRepository.deleteGroup(id: groupId)
+    }
 }

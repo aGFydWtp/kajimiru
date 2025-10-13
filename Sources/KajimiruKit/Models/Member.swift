@@ -74,7 +74,7 @@ public struct Member: Identifiable, Codable, Hashable, Sendable {
         return copy
     }
 
-    /// Returns a new member with updated userId and firebaseUid (for linking to Firebase Auth).
+    /// Returns a new member with updated userId (for linking to Firebase Auth).
     public func updating(
         userId: String,
         updatedBy: String
@@ -82,6 +82,26 @@ public struct Member: Identifiable, Codable, Hashable, Sendable {
         Member(
             id: self.id,
             userId: userId,
+            displayName: self.displayName,
+            avatarURL: self.avatarURL,
+            groupId: self.groupId,
+            role: self.role,
+            createdAt: self.createdAt,
+            createdBy: self.createdBy,
+            updatedAt: Date(),
+            updatedBy: updatedBy,
+            deletedAt: self.deletedAt,
+            deletedBy: self.deletedBy
+        )
+    }
+
+    /// Returns a new member with userId set to nil (for unlinking from Firebase Auth).
+    public func updatingWithNilUserId(
+        updatedBy: String
+    ) -> Member {
+        Member(
+            id: self.id,
+            userId: nil,
             displayName: self.displayName,
             avatarURL: self.avatarURL,
             groupId: self.groupId,

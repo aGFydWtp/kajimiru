@@ -57,6 +57,13 @@ public actor InMemoryGroupRepository: GroupRepository {
     public func save(_ group: Group) async throws {
         groups[group.id] = group
     }
+
+    public func deleteGroup(id: UUID) async throws {
+        guard groups[id] != nil else {
+            throw KajimiruError.notFound
+        }
+        groups.removeValue(forKey: id)
+    }
 }
 
 public actor InMemoryReminderRepository: ReminderRepository {
